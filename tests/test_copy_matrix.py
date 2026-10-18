@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 
 import pytest
@@ -489,7 +490,7 @@ def test_each_platform_renders_one_scaffold(answers, adapter, build_file):
             assert (path / "src/lib.rs").is_file()
 
         for file in text_files(path):
-            text = file.read_text(errors="replace")
+            text = re.sub(r"\$\{\{.*?\}\}", "", file.read_text(errors="replace"))
             for token in ("{{", "}}", "{%", "%}", "{#", "#}"):
                 assert token not in text, f"{file.relative_to(path)} holds {token}"
 

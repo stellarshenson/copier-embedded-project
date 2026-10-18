@@ -81,7 +81,7 @@
 - `RELEASING.md` - the release process, from the version increment to the push
 - `CHANGELOG.md` - record changes under `[Unreleased]` until a release moves them under the version heading
 {% if 'agents' in components -%}
-- `/release` - run the release process as an agent workflow; it asks for approval before the commit, the tag and the push
+- `/release` - run the release process as an agent workflow; it asks for approval before the commit, the tag and the push{% if 'ci' in components %}; the push starts the GitHub Actions release job, which publishes the firmware artifacts{% endif %}
 {% endif -%}
 
 Every command runs inside the conda environment through the Makefile. Do not call a toolchain program directly.

@@ -75,6 +75,15 @@ The tests render projects into temporary directories with `copier copy --trust -
 - **Toolchain** - builds an Arduino and a bare AVR project and runs the simavr boot test; skips
   when the `firmware-avr` conda environment is absent
 
+## Continuous integration
+
+`.github/workflows/test.yml` runs on every push and pull request, in two jobs.
+
+- `tests` - `make setup`, `make test` and `make lint` on Python 3.14 with uv
+- `toolchain` - installs `firmware-avr` from `envs/firmware-avr.py`, then runs `make test-toolchain`
+
+`make test-functional` stays local: it needs every lab environment and QEMU built from source.
+
 ## Developing the template
 
 `make setup` creates `.venv` from `pyproject.toml`; every later command runs in it.

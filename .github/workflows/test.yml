@@ -1,0 +1,44 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install the template test environment
+        run: make setup
+      - name: Render the matrix and run the fast tests
+        run: make test
+      - name: Lint the template scripts and tests
+        run: make lint
+
+  toolchain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          auto-activate-base: false
+      - name: Point the installers at conda
+        run: echo "CONDA_CMD=$(which conda)" >> "$GITHUB_ENV"
+      - name: Make the AVR installer executable
+        run: chmod +x envs/firmware-avr.py
+      - name: Install the firmware-avr toolchain
+        run: ./envs/firmware-avr.py
+      - name: Install the template test environment
+        run: make setup
+      - name: Build the AVR branches
+        run: make test-toolchain

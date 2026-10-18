@@ -1,15 +1,26 @@
-{% raw %}
+{%- set avr_rust = platform == 'avr' and (avr_language | default('c')) == 'rust' -%}
+{%- set stm32_rust = platform == 'stm32' and stm32_toolchain == 'rust' -%}
+{%- set rust = avr_rust or stm32_rust -%}
+{%- set platformio = not rust -%}
+{%- set has_installers = 'env-installers' in components -%}
 name: build
 
 on:
   push:
   pull_request:
 
+concurrency:
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ENV_SCOPE: local
     steps:
       - uses: actions/checkout@v4
+{% if has_installers %}
       - uses: astral-sh/setup-uv@v5
       - uses: conda-incubator/setup-miniconda@v3
         with:
@@ -17,8 +28,75 @@ jobs:
           auto-activate-base: false
       - name: Point the installers at conda
         run: echo "CONDA_CMD=$(which conda)" >> "$GITHUB_ENV"
+      - name: Cache the conda environment
+        uses: actions/cache@v4
+        with:
+          path: .conda/envs
+          key: {% raw %}conda-${{ runner.os }}-${{ hashFiles('resources/envs/firmware-*.py') }}{% endraw %}
       - name: Install the toolchain
         run: make env
+      - name: Build the firmware
+        run: make build
       - name: Host and simulator tests
         run: make test
-{% endraw %}
+      - name: Collect the firmware
+        run: |
+          mkdir -p dist
+{% if platformio %}
+          find .pio/build/{{ pio_board }} -maxdepth 1 -type f \( -name '*.bin' -o -name '*.elf' -o -name '*.hex' \) -exec cp {} dist/ \;
+{% elif avr_rust %}
+          cp target/{{ avr_target }}/release/{{ repo_name }} dist/
+{% else %}
+          cp target/{{ thumb_target }}/release/{{ repo_name }} dist/
+{% endif %}
+          test -n "$(ls -A dist)"
+      - name: Upload the firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: dist/
+          if-no-files-found: error
+      - name: Upload the installer log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-log
+          path: ~/.local/*.out
+          if-no-files-found: ignore
+{% else %}
+      - name: Check the env-installers component
+        run: |
+          echo "This project was generated without the env-installers component, so CI cannot install its toolchain."
+          echo "Regenerate the project with the env-installers component, or run make on the lab workstation."
+          exit 1
+{% endif %}
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: dist
+      - name: Check the tag against VERSION
+        run: test "v$(cat VERSION)" = "$GITHUB_REF_NAME"
+      - name: Build the release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            printf 'Release %s\n' "$GITHUB_REF_NAME" > release-notes.md
+          fi
+      - name: Publish the release
+        env:
+          GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file release-notes.md

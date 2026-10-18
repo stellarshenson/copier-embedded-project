@@ -28,7 +28,7 @@ Eleven components. `components` is a multiselect; the default selection is
 | `data` | off | `data/README.md`, `data/raw/`, `data/processed/`; raw contents in `.gitignore` | `data/` |
 | `simulator` | on | `test/harness/`, `test/functional/`, `pytest.ini`, the `sim` target | those paths and the target |
 | `docs` | off | `docs/README.md`, `docs/design.md`, `docs/acc-crit-<repo>.md`, `docs/defects-<repo>.md` | `docs/` |
-| `ci` | off | `.github/workflows/build.yml` | `.github/` |
+| `ci` | off | `.github/workflows/build.yml`: build and test, cached environment, firmware artifact, `v*` tag release; a guard when `env-installers` is absent | `.github/` |
 | `agents` | on | `.agents/skills/<repo>-device/SKILL.md`, `.agents/workflows/build-and-flash.md`, the `.claude` links | `.agents/`, `.claude/skills/`, `.claude/commands` |
 | `env-installers` | on | `resources/envs/firmware_env.py`, the platform installer, the `create_environment` target | `resources/envs/`; the target is not rendered |
 | `ltspice` | off | `ltspice/README.md`, `ltspice/circuit.cir` (ATtiny84 pin driving a gain-2 op-amp), `ltspice/run.py` and `ltspice/test_circuit.py`; the `ltspice` target, and `test` depends on it | `ltspice/` and the target |
@@ -43,6 +43,40 @@ root in every project. The `agents` component owns the master tree and the links
 
 `device-bridge` owns no path. It changes rendered text and the Makefile `PORT` default; a project
 without the component keeps the same tree.
+
+### 1.1 The ci component
+
+`ci` renders `.github/workflows/build.yml` (`ACC-TMPL-52` to `ACC-TMPL-54`). The workflow is
+Linux-only, because the installers are x86-64 Linux.
+
+- Build job, on every push and pull request: checkout, uv, miniconda, then `make env` with
+  `ENV_SCOPE: local`; the local scope puts the environment under `.conda/envs/` so the job can cache
+  it
+- Cache: `actions/cache@v4` on `.conda/envs`, keyed on `hashFiles('resources/envs/firmware-*.py')`, so
+  an installer change invalidates the cache
+- Build and test: `make build` and `make test`; the platform output is copied to `dist/` and uploaded
+  as the `firmware` artifact. PlatformIO branches collect `.pio/build/<board>/*.bin`, `*.elf` and
+  `*.hex`; Rust branches collect `target/<target>/release/<repo>`
+- Failure log: an upload step with `if: failure()` collects `~/.local/*.out`, so a stopped installer
+  stage is visible
+- Tag release: a `v*` tag equal to `v` plus the contents of `VERSION` downloads the firmware artifact
+  and creates a GitHub Release with `dist/*` and the matching CHANGELOG section; a tag that does not
+  match `VERSION` fails before publishing (`ACC-TMPL-53`)
+- Env-installers guard: without the `env-installers` component no step calls `make env`; one guard step
+  names the missing component and exits non-zero (`ACC-TMPL-54`)
+
+`.github/` is in `_skip_if_exists` (section 7.2), so `copier update` keeps a user's edits to the
+generated workflow.
+
+### 1.2 The template repository workflow
+
+The template repository runs its own `.github/workflows/test.yml` (`ACC-TMPL-55`).
+
+- `tests` job: `make setup`, `make test` and `make lint` on Python 3.14 with uv
+- `toolchain` job: installs `firmware-avr` with `envs/firmware-avr.py` and runs `make test-toolchain`,
+  which builds the AVR branches and runs the simavr boot test
+- `make test-functional` is not a CI job: it needs every lab environment and QEMU built from source,
+  so the full functional tier stays local
 
 ## 2. Questions
 

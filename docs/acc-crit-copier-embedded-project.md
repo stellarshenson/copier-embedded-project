@@ -387,4 +387,32 @@ What a generated project holds and which parts are options
   - mechanism: 2026-10-18T00:08:20Z @kj run.py picks LTspice or ngspice, runs the pinned netlist, parses the measured node voltage
   - log: 2026-10-18T00:08:20Z @kj added
   - log: 2026-10-18T00:20:05Z @kj closed
+- [x] `ACC-TMPL-52` **CI builds and publishes firmware artifacts** - HIGH; with the ci component, every push and pull request installs the conda environment, runs make build and make test, collects the platform firmware files into dist/, uploads them as the firmware artifact, and caches .conda/envs keyed on the installer files
+  - evidence: tests/test_ci.py::test_ci_builds_tests_and_uploads and make test 2026-10-18: 482 passed, 5 skipped
+  - test: render each platform with ci and env-installers; the workflow runs make build and make test, uploads dist/* and caches .conda/envs
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-18T14:25:26Z @kj the ci component renders .github/workflows/build.yml with ENV_SCOPE=local, a cache for .conda/envs, make build, make test, a dist/ copy of the platform output, and actions/upload-artifact
+  - log: 2026-10-18T14:25:26Z @kj added
+  - log: 2026-10-18T14:45:01Z @kj closed
+- [x] `ACC-TMPL-53` **Tag release publishes the firmware** - HIGH; a v* tag equal to v plus the contents of VERSION creates a GitHub Release carrying dist/*; a tag that does not match VERSION fails before publishing
+  - evidence: tests/test_ci.py::test_ci_release_publishes_on_tags and make test 2026-10-18: 482 passed, 5 skipped
+  - test: render a ci project; the release job runs on v* tags, compares the tag with VERSION and runs gh release create
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-18T14:25:26Z @kj the release job runs on refs/tags/v*, checks v$(cat VERSION) against the tag, downloads the firmware artifact and runs gh release create with the matching CHANGELOG section
+  - log: 2026-10-18T14:25:26Z @kj added
+  - log: 2026-10-18T14:45:04Z @kj closed
+- [x] `ACC-TMPL-54` **CI without env-installers stops with a reason** - MEDIUM; a render with ci and without env-installers carries a first toolchain step that names the missing component and exits non-zero; no step calls make env
+  - evidence: tests/test_ci.py::test_ci_without_env_installers_stops_with_a_reason and make test 2026-10-18: 482 passed, 5 skipped
+  - test: render ci without env-installers; the guard step names env-installers and exits 1, and no make env step exists
+  - test-tags: UNIT
+  - mechanism: 2026-10-18T14:25:26Z @kj when env-installers is not selected, Jinja renders a guard step instead of make env; the step explains the missing component and exits 1
+  - log: 2026-10-18T14:25:26Z @kj added
+  - log: 2026-10-18T14:45:06Z @kj closed
+- [x] `ACC-TMPL-55` **Template repository runs its gates in CI** - HIGH; the template repository workflow runs make setup, make test and make lint, and a toolchain job installs firmware-avr and runs make test-toolchain
+  - evidence: tests/test_ci.py::test_template_repository_ci and make lint 2026-10-18: All checks passed!
+  - test: read .github/workflows/test.yml; make setup, make test, make lint and make test-toolchain are present
+  - test-tags: UNIT
+  - mechanism: 2026-10-18T14:25:26Z @kj .github/workflows/test.yml at the repository root runs the fast suite and lint on Python 3.14 with uv, and a second job installs firmware-avr and runs make test-toolchain
+  - log: 2026-10-18T14:25:26Z @kj added
+  - log: 2026-10-18T14:45:08Z @kj closed
 

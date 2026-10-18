@@ -262,7 +262,15 @@ full process and its rules.
 3. Commit `VERSION` and `CHANGELOG.md`
 4. Tag `v<version>`
 5. Push the commit and the tag
+{% if 'ci' in components %}
+## Continuous integration
 
+Every push and pull request builds and tests the firmware in `.github/workflows/build.yml`. The
+firmware files are uploaded as the `firmware` artifact. A `v*` tag publishes a GitHub Release. The
+conda environment is cached under `.conda/envs`, keyed on the installer files. CI requires the
+`env-installers` component; a project without it stops the workflow with that reason. The toolchain
+and functional tiers run locally when the lab environments are not available.
+{% endif %}
 ## Folder structure
 
 ```text
@@ -410,7 +418,7 @@ full process and its rules.
 {% endif -%}
 {% if 'ci' in components -%}
 └── .github/
-    └── workflows/build.yml
+    └── workflows/build.yml       # CI: build, test and tag release
 {% endif -%}
 ```
 

@@ -95,6 +95,7 @@ This document records the authoritative source behind each rule the template fol
 - The Rust scaffold follows `app-template`: `src/lib.rs`, `src/bin/*.rs`, `tests/`, `memory.x` (`ACC-TMPL-27`)
 - The root `CLAUDE.md` imports `AGENTS.md` with `@AGENTS.md` (`ACC-TMPL-14`)
 - PlatformIO projects keep `lib/` for project libraries; host tests stay a separate tier driven by `make test` (`ACC-TMPL-11`, `ACC-TMPL-33`)
+- Generated projects publish firmware artifacts on `v` tags; the template repository runs its fast suite, lint and the AVR toolchain build; the full functional tier stays local because it needs every lab environment (`ACC-TMPL-52`, `ACC-TMPL-53`, `ACC-TMPL-55`)
 
 ## 11. Test capability matrix
 
