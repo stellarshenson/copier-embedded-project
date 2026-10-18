@@ -1,0 +1,8 @@
+# Adversarial review baseline
+
+commit: c30d1d9b30d2cabdf08de712b536187a9188b71a
+subject: feat: generate embedded firmware projects for four platforms
+review: wf_71dba534-96a (architect, bug-hunter, qa-engineer)
+
+The fixes applied from the review are the delta from this commit:
+git diff c30d1d9b30d2cabdf08de712b536187a9188b71a..HEAD
