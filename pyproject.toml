@@ -1,6 +1,6 @@
 [project]
 name = "copier-embedded-project"
-version = "1.0.12"
+version = "1.0.13"
 description = "Copier template for embedded firmware projects: Arduino, bare AVR, ESP and STM32, with one unified structure and opt-in components"
 readme = "README.md"
 requires-python = ">=3.10"

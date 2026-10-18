@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.0.13] - 2026-10-18
+
+### Added
+
+- Agent context in every generated project: `<repo>-device` and `<repo>-toolchain` skills, the
+  `/release` workflow, `VERSION`, `RELEASING.md` and `make increment_version`
+- The toolchain skill asks whether the conda environment is global (shared, one large copy) or
+  local (under `.conda/envs/` in the project), carries `ENV_SCOPE` on every command, and `.conda/`
+  is ignored by git
+- Full CI/CD: the `ci` component renders a workflow that builds, tests and uploads the firmware
+  artifact, caches the conda environment, and publishes a GitHub Release from a `v*` tag; the
+  template repository runs its fast suite, lint and AVR toolchain build in GitHub Actions
+
+### Changed
+
+- `src/` is the single adapter root on every platform; the ESP-IDF adapter lives in `src/main.c`,
+  and a relative `main -> src` symlink with `src_dir = main` lets PlatformIO build the application
+  component
+- The generated Makefile chooses the conda scope at run time with `ENV_SCOPE`, defaulting to the
+  copier answer
+- `project_name` and `repo_name` are recorded with `ask: false`, so `copier update` reuses them
+  instead of computing empty names and conflicting
+- The LTspice guidance matches the target: `make ltspice` runs pytest, the JSON comes from
+  `python ltspice/run.py`, and `circuit.log` is written by LTspice only
+
+### Fixed
+
+- The ESP and STM32 environment installers install pytest, so `make test` and `make sim` work on a
+  fresh environment
+- Free text is no longer interpolated into the copier task command, so a double quote in the
+  description or author name cannot abort `copier copy`
+- A `ci` render without `env-installers` stops with a clear reason instead of an unknown
+  `make env` target
+
 ## [1.0.12] - 2026-10-18
 
 ### Added
