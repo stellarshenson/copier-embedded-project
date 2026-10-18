@@ -1,0 +1,12 @@
+* ATtiny84 PA0 driving a non-inverting op-amp with gain 2
+* LTspice and ngspice compatible. PA0 is a 0-5 V, 1 kHz pulse for 3 ms.
+V1 pa0 0 PULSE(0 5 0 1u 1u 500u 1000u)
+R1 pa0 inp 10k
+R2 inp 0 10k
+R3 out inm 10k
+R4 inm 0 10k
+E1 out 0 inp inm 1e6
+.tran 10u 3m 0 10u
+.meas tran vhigh FIND V(out) AT=0.25m
+.meas tran vlow FIND V(out) AT=0.75m
+.end

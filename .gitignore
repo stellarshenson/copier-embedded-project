@@ -1,0 +1,23 @@
+# Template repository Python environment
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Copier scratch output
+tmp/
+manual_test/
+
+# Run logs
+logs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editors
+.idea/
+.vscode/
+
+# graphify outputs
+graphify-out/

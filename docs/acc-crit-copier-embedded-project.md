@@ -1,0 +1,389 @@
+# Acceptance criteria - copier-embedded-project
+
+Behaviour the template must show, one item per line. `pm-tools` is the only way into this file.
+
+## Authors
+
+- `@kj` Konrad Jelen
+
+## Template `TMPL`
+
+What a generated project holds and which parts are options
+
+- [x] `ACC-TMPL-1` **One project per platform** - HIGH; the template renders a project for each platform - arduino, avr, esp and stm32 - with the chosen board answers, and make help runs in every rendered project
+  - evidence: tests/test_copy_matrix.py::test_make_help plus every platform parameter: make test 72 passed, 2026-10-18
+  - test: tests/test_copy_matrix.py: every platform renders and make help exits 0
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:43Z @kj copier.yml branches the scaffold by platform; post_gen selects the platform files
+  - log: 2026-10-17T22:24:43Z @kj added
+  - log: 2026-10-17T22:26:57Z @kj closed: closed after the matrix run
+- [x] `ACC-TMPL-2` **Components are opt in** - HIGH; notebooks, resources, simulator, docs, ci and agents render only when chosen in components; an unselected component folder is absent from the generated project
+  - evidence: tests/test_components.py::test_minimal_components and ::test_all_components: make test 72 passed, 2026-10-18
+  - test: tests/test_components.py::test_minimal_components and ::test_all_components
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:43Z @kj post_gen removes every component folder not selected; user files are never removed
+  - log: 2026-10-17T22:24:43Z @kj added
+  - log: 2026-10-17T22:26:57Z @kj closed: closed after the component runs
+- [x] `ACC-TMPL-3` **Data folders are a component** - MEDIUM; the data/ tree with its README renders only when data is chosen in components; without it the generated project has no data/ folder
+  - evidence: tests/test_components.py::test_data_component: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_components.py: selecting data adds data/, omitting it leaves it out (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:43Z @kj post_gen treats data/ as the other component folders
+  - log: 2026-10-17T22:24:43Z @kj added
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-4` **Environment installers are a component** - HIGH; resources/envs/ with the platform installer renders only when env-installers is chosen; make create_environment exists only then, and make help names how to install the toolchain when it is not
+  - evidence: tests/test_components.py::test_env_installers_component_selects_the_installer_tree and tests/test_installers.py::test_without_env_installers_make_env_has_no_rule: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_installers.py: env-installers on and off (to extend)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:43Z @kj post_gen removes resources/envs and the env target when env-installers is not selected
+  - log: 2026-10-17T22:24:43Z @kj added
+  - log: 2026-10-17T22:33:51Z @kj amended text "resources/envs/ with the platform installer renders only when env-installers is chosen; make env exists only then, and make help names how to install the toolchain when it is not" -> "resources/envs/ with the platform installer renders only when env-installers is chosen; make create_environment exists only then, and make help names how to install the toolchain when it is not"
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-5` **Rendered files hold no template syntax** - HIGH; no rendered text file contains a Jinja delimiter; every rendered Python file parses and every rendered Makefile answers make -n help
+  - evidence: tests/test_copy_matrix.py::test_no_jinja_delimiter_survives: make test 72 passed, 2026-10-18
+  - test: tests/test_copy_matrix.py: scan every rendered text file
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:43Z @kj the copy matrix renders the selection and greps for delimiters
+  - log: 2026-10-17T22:24:43Z @kj added
+  - log: 2026-10-17T22:26:58Z @kj closed: closed after the matrix run
+- [x] `ACC-TMPL-6` **Generated projects carry their trackers** - MEDIUM; with docs chosen, a generated project holds docs/acc-crit-<repo>.md and docs/defects-<repo>.md with the Authors section and starter items; without docs it holds neither
+  - evidence: tests/test_components.py::test_docs_component_renders_both_trackers: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_components.py: the docs component writes both trackers
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:43Z @kj the docs component renders both trackers with the project's repo_name
+  - log: 2026-10-17T22:24:43Z @kj added
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-7` **The generated Makefile lists its targets** - MEDIUM; make help in a generated project lists create_environment, build, upload, monitor, test, sim, clean and help with their descriptions; a target whose component is absent is not listed
+  - evidence: tests/test_makefile.py::test_help_lists_the_lifecycle_targets_with_descriptions and ::test_help_names_the_lab_installer_without_env_installers: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_makefile.py: make help lists create_environment and the other targets with their descriptions
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:43Z @kj the Makefile prints the ## line above each target in help
+  - log: 2026-10-17T22:24:43Z @kj added
+  - log: 2026-10-17T22:33:51Z @kj amended text "make help in a generated project lists env, build, upload, monitor, test, sim, clean and help with their descriptions; a target whose component is absent is not listed" -> "make help in a generated project lists create_environment, build, upload, monitor, test, sim, clean and help with their descriptions; a target whose component is absent is not listed"
+  - log: 2026-10-17T22:33:56Z @kj edited test "tests/test_makefile.py: make help lists the targets with their descriptions" -> "tests/test_makefile.py: make help lists create_environment and the other targets with their descriptions"
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-8` **The chosen installer is executable** - MEDIUM; the installers in resources/envs/ are executable, and make env runs the installer of the chosen platform
+  - evidence: tests/test_installers.py::test_the_chosen_installer_is_executable and ::test_make_env_runs_the_chosen_installer: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_installers.py: the chosen installer is executable and make env runs it
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:44Z @kj post_gen sets the executable bit on resources/envs/*.py
+  - log: 2026-10-17T22:24:44Z @kj added
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-9` **Boards are the device bridge's boards** - HIGH; the template offers only the board families the device bridge supports - Arduino, general AVR, ESP32, ESP8266 and STM32; a board outside those families is not offered
+  - evidence: tests/test_copy_matrix.py::test_platform_is_the_first_entry_and_question and ::test_question_choices: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: the platform choices are the five supported families (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:24:44Z @kj copier.yml platform and board choices name only device-bridge supported families
+  - log: 2026-10-17T22:24:44Z @kj added
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-10` **FreeRTOS development** - HIGH; the template offers FreeRTOS firmware for ESP32 through ESP-IDF, ESP8266 through the RTOS SDK and STM32 through PlatformIO; the generated starter runs one task that prints the boot line
+  - evidence: tests/test_toolchain.py::test_stm32cube_boots_under_qemu passed: firmware-stm32-pio build, QEMU netduinoplus2, [BOOT] printed; make test-toolchain 8 passed, 2026-10-18
+  - test: tests/test_copy_matrix.py: each FreeRTOS choice renders and its project config names the FreeRTOS framework (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:25:08Z @kj the esp_framework and stm32_framework answers select the FreeRTOS based scaffolds
+  - log: 2026-10-17T22:25:08Z @kj added
+  - log: 2026-10-18T00:20:05Z @kj closed
+- [x] `ACC-TMPL-11` **Best practice layout** - HIGH; every generated project holds src/ for the firmware, lib/ for project libraries and a test tree; the test tree holds host unit tests and the platform's functional harness, and make test runs them
+  - evidence: tests/test_structure.py::test_unified_top_level_tree and tests/test_makefile.py::test_test_target_and_sim_follow_the_simulator_component: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each rendered platform holds src, lib, test/host and test/functional (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:25:09Z @kj the template tree carries src, lib and test; post_gen removes only component folders
+  - log: 2026-10-17T22:25:09Z @kj added
+  - log: 2026-10-18T01:34:31Z @kj closed
+- [x] `ACC-TMPL-12` **The Makefile drives development** - HIGH; the generated Makefile is the only entry point for development: create_environment, build, upload, monitor, test, sim and clean are targets, every target runs inside the project's conda environment, upload and monitor take PORT and BAUD variables, and no documented step calls pio or cargo directly
+  - evidence: tests/test_makefile.py::test_every_toolchain_command_runs_inside_the_environment, ::test_upload_and_monitor_take_port_and_baud, tests/test_readme_sections.py::test_readme_and_device_skill_route_every_command_through_make and tests/test_help_matrix.py::test_platform_help: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_makefile.py: each target exists per platform and honours PORT and BAUD (to extend)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:25:38Z @kj the Makefile wraps every tool invocation; README and skill name make targets only
+  - log: 2026-10-17T22:25:38Z @kj added
+  - log: 2026-10-17T22:32:10Z @kj amended text "the generated Makefile is the only entry point for development: env, build, upload, monitor, test, sim and clean are targets, upload and monitor take PORT and BAUD variables, and no documented step calls pio or cargo directly" -> "the generated Makefile is the only entry point for development: env, build, upload, monitor, test, sim and clean are targets, every target runs inside the project's conda environment, upload and monitor take PORT and BAUD variables, and no documented step calls pio or cargo directly"
+  - log: 2026-10-17T22:33:51Z @kj amended text "the generated Makefile is the only entry point for development: env, build, upload, monitor, test, sim and clean are targets, every target runs inside the project's conda environment, upload and monitor take PORT and BAUD variables, and no documented step calls pio or cargo directly" -> "the generated Makefile is the only entry point for development: create_environment, build, upload, monitor, test, sim and clean are targets, every target runs inside the project's conda environment, upload and monitor take PORT and BAUD variables, and no documented step calls pio or cargo directly"
+  - log: 2026-10-18T01:34:31Z @kj closed
+- [x] `ACC-TMPL-13` **Agent support is opt in and .agents is master** - HIGH; with agents chosen, .agents/ holds the skills and workflows and .claude/skills and .claude/commands are relative links into it; without agents the generated project has no .agents or .claude folder
+  - evidence: tests/test_components.py::test_agents_master_layout and ::test_minimal_components: make test 72 passed, 2026-10-18
+  - test: tests/test_components.py::test_agents_master_layout and ::test_minimal_components
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:26:48Z @kj post_gen creates relative symlinks; the agents component owns both folders
+  - log: 2026-10-17T22:26:48Z @kj added
+  - log: 2026-10-17T22:26:58Z @kj closed: closed after the component runs
+- [x] `ACC-TMPL-14` **AGENTS.md explains the project** - HIGH; every generated project holds a root AGENTS.md describing the folder structure, the tools and the make targets that build it; a root CLAUDE.md imports it with @AGENTS.md
+  - evidence: tests/test_structure.py::test_root_agents_files: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each rendered platform holds AGENTS.md and CLAUDE.md resolves to it (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:26:48Z @kj the template renders AGENTS.md and creates the CLAUDE.md link
+  - log: 2026-10-17T22:26:48Z @kj added
+  - log: 2026-10-17T22:37:30Z @kj amended text "every generated project holds a root AGENTS.md describing the folder structure, the tools and the make targets that build it; a root CLAUDE.md links to AGENTS.md" -> "every generated project holds a root AGENTS.md describing the folder structure, the tools and the make targets that build it; a root CLAUDE.md imports it with @AGENTS.md"
+  - log: 2026-10-18T01:34:31Z @kj closed
+- [x] `ACC-TMPL-15` **The questionnaire asks the technology and follows it** - HIGH; the questionnaire asks the technology first - Arduino, general AVR, ESP or STM32 - and every later question and generated file follows it; a technology change changes the downstream questions and the scaffold, never mixing two technologies
+  - evidence: tests/test_copy_matrix.py::test_platform_is_the_first_entry_and_question, ::test_platform_questions_are_guarded and ::test_each_platform_renders_one_scaffold: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each technology renders only its scaffold and answers (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:03Z @kj copier.yml platform is the first question; when guards every downstream question and the file branches follow the answer
+  - log: 2026-10-17T22:27:03Z @kj added
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-16` **Bare AVR chooses C, C++ or Rust** - HIGH; a bare AVR project chooses its language - C, C++ or Rust - and the scaffold matches: PlatformIO sources for C or C++, a Cargo crate for Rust, with the board, clock and programmer answers shared
+  - evidence: tests/test_toolchain.py::test_avr_language_selects_one_adapter and tests/test_copy_matrix.py::test_question_choices: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each bare AVR language renders its build file and starter source (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:16Z @kj a language answer guards the scaffold files; Arduino stays C++ on the Arduino framework
+  - log: 2026-10-17T22:27:16Z @kj added
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-17` **Derived answers are never asked** - MEDIUM; repo_name, author_email, author_name_clean, serial_baud, env_name and the PlatformIO and STM32 mapper answers are computed with when false; the questionnaire asks only for choices
+  - evidence: tests/test_copy_matrix.py::test_derived_answers_are_never_asked: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py::test_copier_answers
+  - test-tags: UNIT
+  - mechanism: 2026-10-17T22:27:47Z @kj copier.yml computes each answer from the chosen ones
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-18` **The author answer splits into first name, last name and email** - MEDIUM; the author answer splits into first name, last name and email: Konrad Jelen <konrad.jelen@gmail.com> and Stellars Henson stellars.henson@ioata.com give the same three values in either form; the LICENSE carries the full name and the email
+  - evidence: tests/test_author.py::test_split_of_the_angle_bracket_form, ::test_split_of_the_bare_email_form, ::test_name_in_angle_brackets and ::test_name_followed_by_the_email: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_author.py: both example strings give first name, last name and email; the LICENSE carries name and email (to extend)
+  - test-tags: UNIT
+  - mechanism: 2026-10-17T22:27:47Z @kj author_email and author_name_clean split the tokens around the address
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T22:29:31Z @kj amended text "author_name in the forms Name <email> and Name email give the same name and email, and the LICENSE carries Copyright (c) <year> <name> <email>" -> "the author answer splits into first name, last name and email: Konrad Jelen <konrad.jelen@gmail.com> and Stellars Henson stellars.henson@ioata.com give the same three values in either form; the LICENSE carries the full name and the email"
+  - log: 2026-10-17T22:29:31Z @kj edited test "tests/test_author.py::test_name_in_angle_brackets, ::test_name_followed_by_the_email and ::test_name_only" -> "tests/test_author.py: both example strings give first name, last name and email; the LICENSE carries name and email (to extend)"
+  - log: 2026-10-17T22:29:34Z @kj amended title "The author answer splits into name and email" -> "The author answer splits into first name, last name and email"
+  - log: 2026-10-17T23:49:46Z @kj closed
+- [x] `ACC-TMPL-19` **The license answer selects the license file** - MEDIUM; open_source_license chooses Apache-2.0, MIT or no license file; a generated project holds the chosen LICENSE and no other, and no LICENSE when none is chosen
+  - evidence: tests/test_structure.py::test_license_answer_selects_the_chosen_license_text and ::test_no_license_answer_writes_no_license_named_file: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: the LICENSE matches the answer (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj the LICENSE file renders from the answer
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T22:32:10Z @kj amended text "open_source_license chooses MIT, BSD-3-Clause or no license file; a generated project holds the chosen LICENSE and no other" -> "open_source_license chooses Apache-2.0, MIT or no license file; a generated project holds the chosen LICENSE and no other, and no LICENSE when none is chosen"
+  - log: 2026-10-18T01:34:31Z @kj closed
+- [x] `ACC-TMPL-20` **git_init controls the repository** - MEDIUM; git_init Yes creates a git repository on the main branch in a fresh copy; No leaves the project outside version control
+  - evidence: tests/test_copy_matrix.py::test_git_init_yes_creates_the_main_branch and ::test_git_init_no_leaves_no_repository: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: git_init Yes has .git on main, No has none (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj post_gen runs git init -b main when the answer is Yes
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-21` **Updates keep user files** - HIGH; a copier update over an existing project changes no user-owned file: README, notebooks, resources, docs, .github, .claude and test are skipped and post_gen removes nothing on update
+  - evidence: tests/test_post_gen.py::test_update_removes_nothing and ::test_skip_list_protects_every_user_owned_path: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_post_gen.py::test_update_removes_nothing
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj _skip_if_exists lists the user-owned paths; post_gen reads the copier operation
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-22` **The Arduino board answer maps to the board id** - MEDIUM; the Arduino board answer sets the PlatformIO board: uno, nano by bootloader, megaatmega2560, leonardo, or the custom id given for other
+  - evidence: tests/test_copy_matrix.py::test_derived_values and ::test_platformio_configuration: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py::test_platformio_configuration
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj pio_board maps the answer to a PlatformIO id
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-23` **The Arduino libraries answer adds lib/** - MEDIUM; lib/ is always present with lib/core and its README; arduino_libraries Yes adds lib/vendor/ and a library register row for each vendored library with its version, and No keeps lib/core and a register with no vendor rows
+  - evidence: tests/test_platform_contracts.py::test_every_c_and_cpp_render_keeps_the_shared_core and ::test_arduino_libraries_controls_the_vendor_tree_and_its_register_rows: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_components.py: arduino libraries on and off (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj post_gen removes lib/ when the answer is No
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T22:32:10Z @kj amended text "arduino_libraries Yes adds lib/ with its README; No leaves no lib/ in the generated project" -> "arduino_libraries Yes adds lib/ with a README that lists each project library and its version; No leaves no lib/ in the generated project"
+  - log: 2026-10-18T01:19:57Z @kj edited text "arduino_libraries Yes adds lib/ with a README that lists each project library and its version; No leaves no lib/ in the generated project" -> "lib/ is always present with lib/core and its README; arduino_libraries Yes adds lib/vendor/ and a library register row for each vendored library with its version, and No keeps lib/core and a register with no vendor rows"; reason: superseded by ACC-TMPL-44/46 per docs/template-design.md
+  - log: 2026-10-18T01:34:31Z @kj closed
+- [x] `ACC-TMPL-24` **The AVR chip and clock set the board id** - MEDIUM; avr_mcu and avr_clock choose the PlatformIO board: atmega328p at 16 MHz is uno, at 8 MHz pro8MHzatmega328; atmega32u4 is leonardo; attiny85 is attiny85; other takes the custom id
+  - evidence: tests/test_copy_matrix.py::test_derived_values: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each AVR chip and clock pair renders its board id (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj pio_board maps the chip and clock to a PlatformIO id
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-25` **The AVR programmer sets the upload protocol** - MEDIUM; avr_programmer usbasp sets upload_protocol usbasp; arduino-isp sets arduinoisp
+  - evidence: tests/test_copy_matrix.py::test_derived_values: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each programmer renders its upload_protocol (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj pio_upload_protocol maps the answer
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-26` **The ESP chip restricts its framework and board choices** - HIGH; esp32 offers ESP-IDF or Arduino and esp32dev or esp32doit-devkit-v1; esp8266 offers Arduino or the RTOS SDK and nodemcuv2 or d1_mini; a framework or board from the other chip is not offered
+  - evidence: tests/test_copy_matrix.py::test_esp_choices_follow_the_chip: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each esp_chip renders only its allowed answers (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj the esp_framework and esp_board choices are Jinja lists selected by esp_chip
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-27` **The STM32 toolchain selects the scaffold** - HIGH; stm32_toolchain rust renders an app-template layout - src/lib.rs, src/bin/*.rs, tests/, memory.x, the thumb target and the board's flash and RAM sizes; platformio renders platformio.ini; only the chosen scaffold is present
+  - evidence: tests/test_copy_matrix.py::test_stm32_rust_renders_the_app_template_layout, ::test_stm32_rust_memory_and_target and ::test_each_platform_renders_one_scaffold: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: rust and platformio each render one scaffold (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj post_gen keeps the scaffold of the chosen toolchain
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T22:37:30Z @kj amended text "stm32_toolchain rust renders a Cargo crate with the thumb target, memory.x and the board's flash and RAM sizes; platformio renders platformio.ini; only the chosen scaffold is present" -> "stm32_toolchain rust renders an app-template layout - src/lib.rs, src/bin/*.rs, tests/, memory.x, the thumb target and the board's flash and RAM sizes; platformio renders platformio.ini; only the chosen scaffold is present"
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-28` **STM32 framework and upload answers** - MEDIUM; stm32_framework stm32cube or arduino sets the PlatformIO framework; stm32_upload stlink or serial sets the upload protocol, serial using stm32flash; f405rg defaults to serial
+  - evidence: tests/test_platform_contracts.py::test_stm32_upload_selects_the_platformio_protocol, ::test_stm32_f405rg_defaults_to_the_serial_upload, ::test_stm32_serial_upload_is_documented_as_stm32flash and tests/test_copy_matrix.py::test_platformio_configuration: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each STM32 pairing renders its framework and protocol (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj pio_framework and pio_upload_protocol map the answers
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-18T01:34:31Z @kj closed
+- [x] `ACC-TMPL-29` **The serial baud derives from the platform** - MEDIUM; serial_baud is 9600 for Arduino and AVR, 115200 for ESP and STM32; monitor_speed and the Makefile BAUD use it
+  - evidence: tests/test_copy_matrix.py::test_derived_values and ::test_platformio_configuration: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: monitor_speed equals the derived baud (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj serial_baud is computed from platform and read by the Makefile and platformio.ini
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-30` **The environment and platform names derive from the platform** - MEDIUM; env_name is firmware-avr, firmware-esp or firmware-stm32; pio_platform is atmelavr@5.3.0, espressif32@7.1.3, espressif8266@4.2.1 or ststm32@20.0.0; make create_environment runs the matching installer
+  - evidence: tests/test_copy_matrix.py::test_derived_values and tests/test_installers.py::test_make_env_runs_the_chosen_installer: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py::test_platformio_configuration
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj env_name and pio_platform map the platform
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T22:33:51Z @kj amended text "env_name is firmware-avr, firmware-esp or firmware-stm32; pio_platform is atmelavr@5.3.0, espressif32@7.1.3, espressif8266@4.2.1 or ststm32@20.0.0; make env runs the matching installer" -> "env_name is firmware-avr, firmware-esp or firmware-stm32; pio_platform is atmelavr@5.3.0, espressif32@7.1.3, espressif8266@4.2.1 or ststm32@20.0.0; make create_environment runs the matching installer"
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-31` **The template's own development is Makefile driven** - HIGH; this repository develops through its Makefile: setup, test, test-toolchain, lint and clean; make test is the gate and renders the matrix
+  - evidence: make test 2026-10-18: 321 passed, 5 skipped; tests/test_best_practices.py::test_repository_makefile_drives_development
+  - test: make test: the targets are setup, test, test-toolchain, lint and clean
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:27:47Z @kj the repository Makefile wraps the venv and pytest
+  - log: 2026-10-17T22:27:47Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-32` **Simulation suits the technology** - HIGH; the simulator component gives each platform the emulator that supports its chosen board - simavr for Arduino and bare AVR, QEMU for STM32 boards with a machine, Espressif's QEMU fork for ESP32 - and a board no emulator supports skips with the reason
+  - evidence: tests/test_makefile.py::test_simavr_branches_build_the_harness, ::test_sim_skips_with_a_written_reason, ::test_qemu_sim_probes_the_binary_before_it_runs_pytest and tests/test_toolchain.py::test_bare_avr_c_simulates_under_simavr: make test 2026-10-18, 461 passed, 5 skipped; make test-functional 5 passed
+  - test: tests/test_toolchain.py::test_build_and_simulator and the QEMU skip path (to extend)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:28:18Z @kj the simulator files branch by platform; the harness wraps simavr or qemu-system
+  - log: 2026-10-17T22:28:18Z @kj added
+  - log: 2026-10-17T22:37:30Z @kj amended text "the simulator component gives each platform its own emulator: simavr for Arduino and bare AVR, QEMU for ESP and STM32, chosen by the technology; the harness loads the built firmware and runs it" -> "the simulator component gives each platform the emulator that supports its chosen board - simavr for Arduino and bare AVR, QEMU for STM32 boards with a machine, Espressif's QEMU fork for ESP32 - and a board no emulator supports skips with the reason"
+  - log: 2026-10-18T01:34:32Z @kj closed
+- [x] `ACC-TMPL-33` **Tests cover units and the simulated harness** - HIGH; every generated project runs two tiers: host unit tests of the pure logic, and a functional harness that runs the firmware in the platform's simulator; make test runs both and skips the simulator tier with a reason when no emulator supports the board
+  - evidence: tests/test_makefile.py::test_test_target_and_sim_follow_the_simulator_component, ::test_sim_skips_with_a_written_reason and tests/test_toolchain.py::test_build_and_host_tests: make test-toolchain 2026-10-18, 5 passed
+  - test: tests/test_toolchain.py and make test in a rendered project (to extend)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:28:18Z @kj test/host holds the unit tests; test/functional drives the simulator; pytest collects both
+  - log: 2026-10-17T22:28:18Z @kj added
+  - log: 2026-10-17T22:37:30Z @kj amended text "every generated project runs two tiers: host unit tests of the pure logic, and a functional harness that runs the firmware in the platform's simulator; make test runs both and skips the simulator tier with a reason when the emulator is absent" -> "every generated project runs two tiers: host unit tests of the pure logic, and a functional harness that runs the firmware in the platform's simulator; make test runs both and skips the simulator tier with a reason when no emulator supports the board"
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-34` **Best practices are consulted and named** - HIGH; docs/best-practices.md names the authoritative source for each rule the template follows - PlatformIO and Arduino layout, ESP-IDF and FreeRTOS, STM32Cube and Rust embedded, testing tiers and agent instructions - and every rule the template adopts cites one of those sources
+  - evidence: tests/test_best_practices.py::test_every_rule_line_names_its_source: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_best_practices.py: every rule line names a source URL (to add)
+  - test-tags: UNIT
+  - mechanism: 2026-10-17T22:28:40Z @kj research is recorded once in docs/best-practices.md; design and template files point at it
+  - log: 2026-10-17T22:28:40Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-35` **References hold datasheets** - MEDIUM; the references component renders references/ for reference information - datasheets, manuals and notes extracted from them - and the folder is absent when the component is not chosen
+  - evidence: tests/test_components.py::test_references_component: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_components.py: references on and off (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:30:10Z @kj post_gen treats references/ as the other component folders
+  - log: 2026-10-17T22:30:10Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-36` **Resources hold graphics and binaries** - MEDIUM; the resources component renders resources/ for graphics and project binaries such as EEPROM dumps; its README names both purposes, and the folder is absent when the component is not chosen
+  - evidence: tests/test_components.py::test_resources_readme_purposes, ::test_minimal_components and ::test_all_components: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_components.py::test_minimal_components and ::test_all_components; the README names both purposes (to extend)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:30:10Z @kj resources/ carries graphics/ and external/; the README says what belongs where
+  - log: 2026-10-17T22:30:10Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-37` **Simulator limits are written down** - MEDIUM; the generated README names the simulator, what it does not model for that platform and the workaround the harness uses; a limit found by a test is recorded there
+  - evidence: tests/test_readme_sections.py::test_simulator_limits_name_the_emulator_and_a_limit: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: the README holds a Simulator limits section naming the emulator (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:32:10Z @kj the simulator component renders a limits section per platform
+  - log: 2026-10-17T22:32:10Z @kj added
+  - log: 2026-10-18T01:34:32Z @kj closed
+- [x] `ACC-TMPL-38` **The device skill covers the board** - MEDIUM; the agents component's device skill covers port discovery, build, upload, the non-interactive console, the command table and a troubleshooting table for the generated project
+  - evidence: tests/test_components.py::test_device_skill_covers_the_board: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_components.py: the device skill names each section (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:32:10Z @kj the skill renders per platform from the answers
+  - log: 2026-10-17T22:32:10Z @kj added
+  - log: 2026-10-17T23:49:47Z @kj closed
+- [x] `ACC-TMPL-39` **EEPROM backup and restore** - MEDIUM; an Arduino or bare AVR project has make eeprom-backup and make eeprom-restore; the tools are non-interactive, write the image under resources/ and verify the read-back after a restore
+  - evidence: tests/test_makefile.py::test_eeprom_targets_exist_for_arduino_and_bare_avr, ::test_eeprom_tool_backs_up_and_restores_with_verification and ::test_eeprom_tool_fails_when_the_read_back_differs: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_makefile.py: both targets exist for arduino and avr (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:32:10Z @kj the Makefile wraps a backup tool that reads and writes the EEPROM over the console
+  - log: 2026-10-17T22:32:10Z @kj added
+  - log: 2026-10-17T23:49:48Z @kj closed
+- [x] `ACC-TMPL-40` **README documents structure and development** - HIGH; the generated README names the folder structure and how to develop the project: make env, build, upload, monitor, test, sim, clean, the test tiers and where each lives
+  - evidence: tests/test_readme_sections.py::test_readme_documents_the_folder_structure_and_targets and ::test_readme_and_device_skill_route_every_command_through_make: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: the README holds the Layout and Targets sections (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:32:11Z @kj the README renders the layout and target table from the answers
+  - log: 2026-10-17T22:32:11Z @kj added
+  - log: 2026-10-18T01:34:32Z @kj closed
+  - log: 2026-10-18T01:52:34Z @kj edited evidence "tests/test_readme_sections.py::test_readme_documents_the_folder_structure_and_targets: make test 2026-10-18, 461 passed, 5 skipped" -> "tests/test_readme_sections.py::test_readme_documents_the_folder_structure_and_targets and ::test_readme_and_device_skill_route_every_command_through_make: make test 2026-10-18, 461 passed, 5 skipped"
+- [x] `ACC-TMPL-41` **CHANGELOG template** - MEDIUM; every generated project ships a CHANGELOG.md following Keep a Changelog with an Unreleased section; copier update does not overwrite it
+  - evidence: tests/test_readme_sections.py::test_changelog_follows_keep_a_changelog and tests/test_post_gen.py::test_skip_list_protects_every_user_owned_path: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: CHANGELOG.md exists with the Unreleased heading (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:32:11Z @kj template/CHANGELOG.md renders; _skip_if_exists keeps it on update
+  - log: 2026-10-17T22:32:11Z @kj added
+  - log: 2026-10-18T01:34:32Z @kj closed
+- [x] `ACC-TMPL-42` **Environment scope is an option** - HIGH; the questionnaire offers the environment installation scope - global (a conda environment under the shared conda root) or local (an environment under the project) - and make create_environment installs the firmware-<platform> environment in the chosen scope
+  - evidence: tests/test_platform_contracts.py::test_environment_scope_switches_the_export_and_the_installer and tests/test_makefile.py::test_environment_scope_selects_the_conda_root: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_makefile.py: create_environment runs in both scopes (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:33:51Z @kj the scope answer passes to the installer; make create_environment wraps it
+  - log: 2026-10-17T22:33:51Z @kj added
+  - log: 2026-10-18T01:19:57Z @kj edited text "the questionnaire offers the environment installation scope - global (a conda environment named after the project) or local (an environment under the project) - and make create_environment installs it in the chosen scope" -> "the questionnaire offers the environment installation scope - global (a conda environment under the shared conda root) or local (an environment under the project) - and make create_environment installs the firmware-<platform> environment in the chosen scope"; reason: superseded by ACC-TMPL-30 per docs/template-design.md
+  - log: 2026-10-18T01:34:32Z @kj closed
+- [x] `ACC-TMPL-43` **Device bridge support is opt in** - HIGH; the device-bridge component makes the generated project work with the jupyterlab_device_bridge_extension: the device skill and README name the pty path form, the run --device upload form and the monitor commands, and the Makefile takes PORT from the bridge's device directory
+  - evidence: tests/test_components.py::test_device_bridge_component: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_components.py: the device-bridge component adds the bridge facts (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:33:51Z @kj the component renders bridge instructions into the device skill and README; PORT stays overridable
+  - log: 2026-10-17T22:33:51Z @kj added
+  - log: 2026-10-17T23:49:48Z @kj closed
+- [x] `ACC-TMPL-44` **Shared core with per-target adapters** - HIGH; the pure logic lives in one toolchain-neutral module that every platform's build compiles and the host tests cover; each platform keeps its own roots and a thin adapter
+  - evidence: tests/test_toolchain.py::test_c_core_is_one_shared_module, ::test_rust_core_is_the_package_library and ::test_one_build_root_and_one_adapter; tests/test_makefile.py::test_host_tests_compile_the_shared_core: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: each platform's host test compiles the shared module (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:37:31Z @kj src/ adapters call the shared module; post_gen keeps the module for every platform
+  - log: 2026-10-17T22:37:31Z @kj added
+  - log: 2026-10-17T23:49:48Z @kj closed
+- [x] `ACC-TMPL-45` **Test capability matrix** - HIGH; a capability matrix states, per platform and board, whether the tests run on the host, in the simulator or only on hardware; the generated README and docs/best-practices.md carry it
+  - evidence: tests/test_best_practices.py::test_best_practices_carries_the_test_capability_matrix and tests/test_readme_sections.py::test_readme_states_the_test_capability_for_its_board: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: the README names the test tiers per target (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:37:31Z @kj the matrix is rendered from the platform and board answers
+  - log: 2026-10-17T22:37:31Z @kj added
+  - log: 2026-10-18T01:34:32Z @kj closed
+- [x] `ACC-TMPL-46` **One unified project structure** - HIGH; every generated project shares one top-level structure - Makefile, src/, lib/, test/host, test/harness, test/functional, resources/, references/, docs/, tools/ - and the toolchain adds only documented small variations: the build file, the adapter inside src/, and where a toolchain requires it main/ or src/bin
+  - evidence: tests/test_structure.py::test_one_top_level_structure_across_platforms and ::test_documented_layout_variation: make test 2026-10-18, 461 passed, 5 skipped
+  - test: tests/test_copy_matrix.py: every platform renders the same top-level folders plus the documented variation only (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:41:56Z @kj copier.yml renders the same tree for every platform; the platform adapter and build file are the only per-toolchain differences
+  - log: 2026-10-17T22:41:56Z @kj added
+  - log: 2026-10-18T01:34:32Z @kj closed
+- [x] `ACC-TMPL-47` **Arduino sketch link to the project root** - MEDIUM; the Arduino questionnaire offers an option to place the sketch at the project root as a symlink into src/; when chosen the root holds a <repo>.ino link to src/<repo>.ino, and when not the sketch stays in src/ only
+  - evidence: tests/test_copy_matrix.py::test_sketch_link_answer_places_a_root_symlink and tests/test_post_gen.py::test_sketch_link_creates_the_root_symlink and ::test_sketch_link_off_leaves_the_sketch_in_src: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_post_gen.py: the sketch link option creates the root symlink and its absence leaves only src/ (to add)
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:42:37Z @kj post_gen creates the relative symlink when the answer is Yes
+  - log: 2026-10-17T22:42:37Z @kj added
+  - log: 2026-10-17T23:49:48Z @kj closed
+- [x] `ACC-TMPL-48` **The docs state the philosophy** - MEDIUM; docs/philosophy.md explains the template's philosophy - one unified structure with small documented variations, so moving between boards stays the same operation; components opt in; the Makefile drives development; each toolchain's best practices; a shared core; honest simulator support - and the generated README opens with it in one paragraph
+  - evidence: tests/test_best_practices.py::test_philosophy_states_the_principles and ::test_generated_readme_opens_with_the_philosophy_paragraph: make test 2026-10-18, 321 passed, 5 skipped
+  - test: tests/test_best_practices.py: docs/philosophy.md holds the principles and the generated README opens with the paragraph (to add)
+  - test-tags: UNIT
+  - mechanism: 2026-10-17T22:42:49Z @kj the philosophy is written once in docs/philosophy.md; the README renders a short form
+  - log: 2026-10-17T22:42:49Z @kj added
+  - log: 2026-10-17T22:43:01Z @kj amended text "docs/philosophy.md explains the template's philosophy - one unified structure with small documented variations, components opt in, the Makefile drives development, each toolchain's best practices, a shared core and honest simulator support - and the generated README opens with it in one paragraph" -> "docs/philosophy.md explains the template's philosophy - one unified structure with small documented variations, so moving between boards stays the same operation; components opt in; the Makefile drives development; each toolchain's best practices; a shared core; honest simulator support - and the generated README opens with it in one paragraph"
+  - log: 2026-10-17T23:49:48Z @kj closed
+- [x] `ACC-TMPL-49` **Five projects build and simulate** - HIGH; tests/test_builds.py renders avr rust, stm32, arduino, esp and esp freertos with copier, runs make build and make sim in each, and reports per case the stage reached; a toolchain or emulator the workstation lacks skips that case with the reason
+  - evidence: make test-functional 4 passed 1 skipped: avr rust and arduino under simavr, stm32 rust under netduinoplus2, esp32 espidf under Espressif QEMU; esp8266 skipped, no machine; 2026-10-18
+  - test: make test-functional renders five projects, builds each and runs its simulator test
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-17T22:52:05Z @kj copier copy --trust --defaults with five answer sets; the generated Makefile drives build and sim
+  - log: 2026-10-17T22:52:05Z @kj added
+  - log: 2026-10-18T00:20:05Z @kj closed
+- [x] `ACC-TMPL-50` **LTspice circuit component is opt in** - MEDIUM; The components multiselect offers ltspice, off by default; when chosen it renders ltspice/ with a circuit.cir netlist of an ATtiny84 pin driving an op-amp, a README and a batch runner; when not chosen post_gen removes ltspice/
+  - evidence: tests/test_components.py::test_ltspice_component_renders_the_circuit passed; component on renders ltspice/ and the target, off removes both; make test 329 passed, 2026-10-18
+  - test: make test renders the component on and off and asserts the netlist and Makefile target
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-18T00:08:20Z @kj components choice renders template/ltspice; post_gen removes it when unselected
+  - log: 2026-10-18T00:08:20Z @kj added
+  - log: 2026-10-18T00:20:05Z @kj closed
+- [x] `ACC-TMPL-51` **ATtiny84 op-amp circuit simulates** - HIGH; A functional test runs circuit.cir with LTspice when present or ngspice otherwise and asserts the op-amp output follows the ATtiny84 pulse; without a simulator it skips with the reason
+  - evidence: tests/test_toolchain.py::test_ltspice_circuit_simulates passed under ngspice in firmware-avr; measured vhigh 5 V and vlow 0 V; 2026-10-18
+  - test: pytest ltspice/test_circuit.py in a rendered project with the component selected
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-18T00:08:20Z @kj run.py picks LTspice or ngspice, runs the pinned netlist, parses the measured node voltage
+  - log: 2026-10-18T00:08:20Z @kj added
+  - log: 2026-10-18T00:20:05Z @kj closed
+

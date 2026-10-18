@@ -1,0 +1,24 @@
+{% raw %}
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          auto-activate-base: false
+      - name: Point the installers at conda
+        run: echo "CONDA_CMD=$(which conda)" >> "$GITHUB_ENV"
+      - name: Install the toolchain
+        run: make env
+      - name: Host and simulator tests
+        run: make test
+{% endraw %}

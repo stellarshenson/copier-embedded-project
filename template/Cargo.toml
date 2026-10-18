@@ -1,0 +1,34 @@
+[package]
+name = "{{ crate_name }}"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+firmware = []
+
+[[bin]]
+name = "{{ repo_name }}"
+path = "src/bin/{{ repo_name }}.rs"
+required-features = ["firmware"]
+test = false
+bench = false
+
+[[test]]
+name = "core"
+path = "test/host/core.rs"
+
+[dependencies]
+panic-halt = "0.2"
+{%- if platform == 'stm32' %}
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+{%- endif %}
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"

@@ -1,0 +1,10 @@
+{% if platform == 'avr' %}
+[target.{{ avr_target }}]
+rustflags = [
+    "-C", "target-cpu={{ avr_cpu }}",
+    "-C", "link-arg=-mmcu={{ avr_cpu }}",
+]
+{% elif platform == 'stm32' %}
+[target.{{ thumb_target }}]
+rustflags = ["-C", "link-arg=-Tlink.x"]
+{% endif %}
