@@ -122,10 +122,19 @@ def test_without_env_installers_make_env_has_no_rule():
         assert "No rule to make target" in result.stderr
 
 
-def test_local_scope_installs_under_the_project():
-    with bake({"platform": "arduino", "environment_scope": "local"}) as path:
+SCOPE_BLOCK = (
+    "ifeq ($(ENV_SCOPE),local)\n"
+    "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs\n"
+    "endif"
+)
+
+
+@pytest.mark.parametrize("scope", ["global", "local"])
+def test_environment_scope_sets_the_default_and_keeps_the_installer(scope):
+    with bake({"platform": "arduino", "environment_scope": scope}) as path:
         makefile = (path / "Makefile").read_text()
-        assert "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs" in makefile
+        assert f"ENV_SCOPE ?= {scope}" in makefile
+        assert SCOPE_BLOCK in makefile
         result = subprocess.run(
             ["make", "-n", "create_environment"], cwd=path, capture_output=True, text=True
         )
@@ -133,6 +142,6 @@ def test_local_scope_installs_under_the_project():
         assert PLATFORM_INSTALLER["arduino"] in result.stdout
 
 
-def test_global_scope_keeps_the_conda_root():
-    with bake({"platform": "arduino", "environment_scope": "global"}) as path:
-        assert "CONDA_ENVS_PATH" not in (path / "Makefile").read_text()
+def test_rendered_gitignore_hides_the_local_environment():
+    with bake({"platform": "arduino"}) as path:
+        assert ".conda/" in (path / ".gitignore").read_text()

@@ -23,6 +23,7 @@ ESPFLASH = "4.6.0"
 PLATFORMIO = "6.2.0"
 ESP8266 = "4.2.1"  # PlatformIO platform with the Arduino ESP8266 core 3.1.2; a project pins the same version
 ESP32 = "7.1.3"  # PlatformIO platform with ESP-IDF, which carries FreeRTOS
+PYTEST = "9.1.1"
 QEMU = "esp-develop-9.2.2-20260417"  # Espressif's QEMU fork, the only emulator with an ESP32 machine
 QEMU_ASSET = "qemu-xtensa-softmmu-esp_develop_9.2.2_20260417-x86_64-linux-gnu.tar.xz"
 QEMU_SHA256 = "0eecb2a34a5586c0e59110f77b9343b7b336e82fdb0e1a30e1dc1bab8a547e35"
@@ -65,6 +66,7 @@ def esp8266(env):
     """PlatformIO keeps the platform, xtensa-lx106-elf-gcc and the Arduino core with the SDK in
     <prefix>/platformio; mklittlefs and mkspiffs build file system images."""
     env.platformio(PLATFORMIO, f"espressif8266@{ESP8266}", "nodemcuv2", "tool-mklittlefs", "tool-mkspiffs")
+    env.run(env.prefix / "bin/python", "-m", "pip", "install", f"pytest=={PYTEST}")
 
 
 def esp8266_rtos(env):
@@ -126,7 +128,7 @@ install(
         Stage(f"Rust {RUST}", "static.rust-lang.org", rust),
         Stage(f"Espressif Rust {ESP_RUST} for Xtensa", "github.com", espressif_rust),
         Stage(f"espflash {ESPFLASH}", "github.com", espflash),
-        Stage(f"PlatformIO {PLATFORMIO}, espressif8266 {ESP8266}", "registry.platformio.org", esp8266),
+        Stage(f"PlatformIO {PLATFORMIO}, espressif8266 {ESP8266}, pytest {PYTEST}", "registry.platformio.org", esp8266),
         Stage(f"FreeRTOS: ESP8266 RTOS SDK on espressif8266 {ESP8266}", "registry.platformio.org", esp8266_rtos),
         Stage(f"FreeRTOS: ESP-IDF on espressif32 {ESP32}", "registry.platformio.org", esp32_idf),
         Stage(f"Espressif QEMU {QEMU} with the ESP32 machine", "github.com", esp32_qemu),
@@ -141,6 +143,7 @@ install(
         ("pio", ["pio", "--version"]),
         ("PlatformIO espressif8266", f"{ESP8266} with the Arduino core 3.1.2 and the RTOS SDK"),
         ("PlatformIO espressif32", f"{ESP32} with ESP-IDF"),
+        ("pytest", ["pytest", "--version"]),
         ("qemu-system-xtensa", ["qemu-system-xtensa", "--version"]),
         ("ngspice", ["ngspice", "--version"]),
     ],

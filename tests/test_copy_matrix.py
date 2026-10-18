@@ -74,6 +74,10 @@ def choices(name: str, **overrides: str) -> list[str]:
     return yaml.safe_load(template.render(**context))
 
 
+def hidden(question: dict) -> bool:
+    return question.get("when") is False or question.get("ask") is False
+
+
 def test_platform_is_the_first_entry_and_question():
     questions = [name for name in CONFIG if not name.startswith("_")]
     assert questions[0] == "platform"
@@ -85,7 +89,7 @@ def test_components_is_the_last_visible_question():
     visible = [
         name
         for name, question in CONFIG.items()
-        if not name.startswith("_") and question.get("when") is not False
+        if not name.startswith("_") and not hidden(question)
     ]
     assert visible[0] == "platform"
     assert visible[-1] == "components"
@@ -162,11 +166,11 @@ def test_platform_questions_are_guarded(name, platform):
 
 def test_derived_answers_are_never_asked():
     for name in DERIVED:
-        assert CONFIG[name]["when"] is False, name
+        assert hidden(CONFIG[name]), name
     visible = {
         name
         for name, question in CONFIG.items()
-        if not name.startswith("_") and question.get("when") is not False
+        if not name.startswith("_") and not hidden(question)
     }
     assert visible.isdisjoint(DERIVED)
 
@@ -402,7 +406,7 @@ SCAFFOLDS = [
     ),
     pytest.param(
         {"platform": "esp", "esp_chip": "esp32", "esp_framework": "espidf"},
-        "main/main.c",
+        "src/main.c",
         "platformio.ini",
         id="esp32-espidf",
     ),
@@ -464,13 +468,18 @@ def test_each_platform_renders_one_scaffold(answers, adapter, build_file):
                 "src/main.c",
                 "src/main.cpp",
                 "src/board.ino",
-                "main/main.c",
                 "src/bin/board.rs",
             )
             if (path / relative).exists()
         ]
         assert entry_points == [adapter]
         assert (path / build_file).is_file()
+
+        if answers.get("esp_framework") == "espidf":
+            main = path / "main"
+            assert main.is_symlink()
+            assert os.readlink(main) == "src"
+            assert main.resolve() == (path / "src").resolve()
 
         if build_file == "platformio.ini":
             assert not (path / "Cargo.toml").exists()
@@ -616,14 +625,12 @@ def test_make_help_lists_the_development_targets():
 
 
 @pytest.mark.parametrize("scope", ["global", "local"])
-def test_environment_scope_selects_the_conda_root(scope):
+def test_environment_scope_sets_the_makefile_default(scope):
     with bake({"platform": "arduino", "environment_scope": scope}) as path:
         makefile = (path / "Makefile").read_text()
-        local_line = "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs"
-        if scope == "local":
-            assert local_line in makefile
-        else:
-            assert local_line not in makefile
+        assert f"ENV_SCOPE ?= {scope}" in makefile
+        assert "ifeq ($(ENV_SCOPE),local)" in makefile
+        assert "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs" in makefile
 
 
 @pytest.mark.parametrize(
@@ -799,6 +806,8 @@ def test_copier_answers_omit_hidden_and_skipped_answers():
         text = (path / ".copier-answers.yml").read_text()
         assert "platform: avr" in text
         assert "avr_language: c" in text
+        assert "project_name: board" in text
+        assert "repo_name: board" in text
         for hidden in ("author_email:", "author_name_clean:", "pio_board:", "avr_target:"):
             assert hidden not in text, hidden
         for skipped in ("arduino_board:", "esp_chip:", "stm32_toolchain:"):

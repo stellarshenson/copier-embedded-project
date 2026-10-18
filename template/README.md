@@ -113,9 +113,9 @@
 {%- if esp_framework == 'espidf' -%}
 {%- set toolchain = 'ESP32 ESP-IDF (PlatformIO)' -%}
 {%- set build_file = '`platformio.ini` and `sdkconfig.defaults`' -%}
-{%- set adapter = '`main/main.c` with `app_main`' -%}
+{%- set adapter = '`src/main.c` with `app_main`' -%}
 {%- set core = '`lib/core/core.c` and `lib/core/core.h`; the host test is `test/host/test_core.c`' -%}
-{%- set variation = '`main/` replaces `src/`' -%}
+{%- set variation = '`main -> src` compatibility symlink' -%}
 {%- set simulator_cell = 'yes: Espressif QEMU fork, `qemu-system-xtensa -machine esp32`' -%}
 {%- set simulator_limit = 'The Espressif QEMU fork models selected ESP32 peripherals. It does not model the radio or the full board circuit.' -%}
 {%- set simulator_workaround = '`make sim` prints the written reason and exits 0 when qemu-system-xtensa is absent; use the board for radio and timing cases.' -%}
@@ -221,18 +221,17 @@ module, and the README states which test tiers the board can run and which emula
 `{{ env_name }}` with `conda run`, and no documented step calls `pio`, `cargo`, `avrdude` or
 `stm32flash` directly.
 
-{% if environment_scope == 'local' -%}
-The environment uses the `local` scope: the Makefile exports
-`CONDA_ENVS_PATH=$(PROJECT_DIR)/.conda/envs`, so the environment is created under `.conda/envs/`
-in this project.
-{% endif -%}
+The Makefile's `ENV_SCOPE` variable chooses where the environment lives: `{{ environment_scope }}`
+by default, `global` in the conda root, `local` under `.conda/envs/` in this project. Local scope
+exports `CONDA_ENVS_PATH=$(PROJECT_DIR)/.conda/envs`. Pass the same `ENV_SCOPE` to every make
+command.
 
 ## Targets
 
 | Target | Effect |
 |---|---|
 {% if has_installers -%}
-| `make create_environment` | run `resources/envs/{{ installer }}.py` |
+| `make create_environment` | run `resources/envs/{{ installer }}.py`; `ENV_SCOPE` chooses `global` or `local` |
 | `make env` | alias for `make create_environment` |
 {% endif -%}
 | `make build` | build the firmware |
@@ -283,8 +282,9 @@ full process and its rules.
 ├── pytest.ini                     # simulator test configuration
 {% endif -%}
 {% if platform == 'esp' and esp_framework == 'espidf' -%}
-├── main/
+├── src/
 │   └── main.c                     # adapter: app_main
+├── main -> src                    # compatibility symlink; the ESP-IDF component name
 ├── sdkconfig.defaults
 {% elif platform == 'esp' and esp_framework == 'esp8266-rtos-sdk' -%}
 ├── src/
@@ -416,7 +416,9 @@ full process and its rules.
 
 Selected components: `{{ components | join('`, `') }}`. A folder owned by a component is present
 only when that component was selected. `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md`, `Makefile`,
-`main/` or `src/`, `lib/`, `test/host/` and `tools/` are always present.
+`src/`, `lib/`, `test/host/` and `tools/` are always present. `src/` is the master source root on
+every platform; on ESP-IDF, `main` is a relative symlink to `src` that supplies the component
+name, and the build reads the same files once.
 
 ## Where things go
 
@@ -441,7 +443,7 @@ only when that component was selected. `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md`,
 {% else -%}
 | Shared pure logic | `lib/core/core.c` and `lib/core/core.h` |
 {% endif -%}
-| Firmware adapter for the board | {% if platform == 'esp' and esp_framework == 'espidf' %}`main/`{% else %}`src/`{% endif %} |
+| Firmware adapter for the board | `src/` |
 | Host, simulator and functional tests | `test/host/`, `test/harness/`, `test/functional/` |
 {% if has_ltspice -%}
 | Circuit netlist and its runner | `ltspice/` |
@@ -475,7 +477,7 @@ The documented variations across toolchains are:
 | Bare AVR C | `platformio.ini` | `src/main.c` | none |
 | Bare AVR C++ | `platformio.ini` | `src/main.cpp` | none |
 | Bare AVR Rust | `Cargo.toml`, `.cargo/config.toml`, `rust-toolchain.toml` | `src/bin/<repo>.rs` | `src/bin/` for Cargo |
-| ESP32 ESP-IDF (PlatformIO) | `platformio.ini`, `sdkconfig.defaults` | `main/main.c` with `app_main` | `main/` replaces `src/` |
+| ESP32 ESP-IDF (PlatformIO) | `platformio.ini`, `sdkconfig.defaults` | `src/main.c` with `app_main` | `main -> src` compatibility symlink |
 | ESP32 Arduino | `platformio.ini` | `src/main.cpp` | none |
 | ESP8266 Arduino | `platformio.ini` | `src/main.cpp` | none |
 | ESP8266 RTOS SDK | `platformio.ini`, `sdkconfig.defaults` | `src/main.c` with `user_init` | none |

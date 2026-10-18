@@ -114,7 +114,6 @@ envs/                          master environment definitions and installers
 template/                      the rendered project
 ├── Makefile                   create_environment, build, upload, monitor, test, sim, ltspice, clean
 ├── src/                       adapters: main.c, main.cpp, <repo>.ino; src/bin/<repo>.rs in Cargo projects
-├── main/                      the ESP-IDF adapter, main.c with app_main
 ├── lib/                       lib/core for C and C++, the library register, lib/vendor for Arduino
 ├── test/                      test/host, test/harness, test/functional
 ├── tools/                     eeprom_tool.py and, for STM32Cube, freertos.py

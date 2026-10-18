@@ -128,14 +128,45 @@ def test_create_environment_runs_the_platform_installer():
         assert "create_environment" in help_names(run_help(project))
 
 
-@pytest.mark.parametrize("scope, local", [("global", False), ("local", True)])
-def test_environment_scope_selects_the_conda_root(scope, local):
+SCOPE_BLOCK = (
+    "ifeq ($(ENV_SCOPE),local)\n"
+    "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs\n"
+    "endif"
+)
+
+
+def make_database(project, scope: str) -> str:
+    """The variable database of one make run with ENV_SCOPE set on the command line."""
+    environment = dict(os.environ)
+    for name in ("CONDA_ENVS_PATH", "MAKEFLAGS", "MAKELEVEL", "MFLAGS"):
+        environment.pop(name, None)
+    result = subprocess.run(
+        ["make", "-p", "-n", "help", f"ENV_SCOPE={scope}"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout
+
+
+@pytest.mark.parametrize("scope", ["global", "local"])
+def test_environment_scope_sets_the_default_and_keeps_the_conditional(scope):
     answers = {"platform": "arduino", "environment_scope": scope}
     with bake(answers, components=DEFAULT) as project:
         text = makefile(project)
-        line = "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs"
-        assert (line in text) is local
+        assert f"ENV_SCOPE ?= {scope}" in text
+        assert SCOPE_BLOCK in text
         assert "firmware-avr.py" in dry_run(project, "create_environment")
+
+
+def test_environment_scope_can_be_overridden_at_run_time():
+    answers = {"platform": "arduino", "environment_scope": "global"}
+    with bake(answers, components=DEFAULT) as project:
+        local = f"CONDA_ENVS_PATH := {project.resolve()}/.conda/envs"
+        assert local in make_database(project, "local")
+        assert local not in make_database(project, "global")
 
 
 def test_upload_and_monitor_take_port_and_baud():

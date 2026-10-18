@@ -89,6 +89,7 @@ This document records the authoritative source behind each rule the template fol
 ## 10. Adopted rules
 
 - Shared logic in a toolchain-neutral module; per-target adapters keep each toolchain's roots (`ACC-TMPL-44`)
+- `src/` stays the adapter master for ESP-IDF; `main -> src` is a relative compatibility symlink that supplies the component name, and PlatformIO sets `src_dir = main` to build through it
 - A capability matrix states which targets run host, simulator and HIL tests (`ACC-TMPL-45`)
 - The simulator tier names the boards the emulator supports and skips the rest with a reason (`ACC-TMPL-32`, `ACC-TMPL-33`)
 - The Rust scaffold follows `app-template`: `src/lib.rs`, `src/bin/*.rs`, `tests/`, `memory.x` (`ACC-TMPL-27`)

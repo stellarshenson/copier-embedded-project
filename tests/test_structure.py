@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -90,7 +91,6 @@ ADAPTERS = [
     "src/main.c",
     "src/main.cpp",
     f"src/{REPO}.ino",
-    "main/main.c",
     f"src/bin/{REPO}.rs",
 ]
 
@@ -125,10 +125,15 @@ def test_unified_top_level_tree(answers):
         for relative in TREE_DIRS:
             assert (path / relative).is_dir(), relative
 
-        build_root = "main" if espidf(answers) else "src"
-        other_root = "src" if build_root == "main" else "main"
-        assert (path / build_root).is_dir(), build_root
-        assert not (path / other_root).exists(), other_root
+        assert (path / "src").is_dir(), "src"
+        if espidf(answers):
+            link = path / "main"
+            assert link.is_symlink(), "main"
+            assert os.readlink(link) == "src"
+            assert (link / "main.c").resolve() == (path / "src/main.c").resolve()
+        else:
+            assert not (path / "main").exists(), "main"
+            assert not (path / "main").is_symlink(), "main"
 
         host_tests = {entry.name for entry in (path / "test/host").iterdir()}
         assert len(host_tests) == 1, host_tests
@@ -226,9 +231,9 @@ LAYOUTS = [
     pytest.param(
         {"platform": "esp", "esp_chip": "esp32", "esp_framework": "espidf"},
         "platformio.ini",
-        "main/main.c",
+        "src/main.c",
         ("sdkconfig.defaults",),
-        "main",
+        "main-link",
         id="esp32-espidf",
     ),
     pytest.param(
@@ -283,12 +288,15 @@ def test_documented_layout_variation(answers, build_file, adapter, extra_files, 
         for relative in extra_files:
             assert (path / relative).is_file(), relative
 
-        if variation == "main":
-            assert (path / "main").is_dir()
-            assert not (path / "src").exists()
+        assert (path / "src").is_dir()
+        if variation == "main-link":
+            link = path / "main"
+            assert link.is_symlink()
+            assert os.readlink(link) == "src"
+            assert (link / "main.c").resolve() == (path / "src/main.c").resolve()
         else:
-            assert (path / "src").is_dir()
             assert not (path / "main").exists()
+            assert not (path / "main").is_symlink()
 
         if variation == "src-bin":
             assert (path / "src/bin").is_dir()
@@ -303,7 +311,12 @@ def test_one_top_level_structure_across_platforms():
         with bake(answers, components=ALL_COMPONENTS) as path:
             for relative in UNIFIED_ROOTS:
                 assert (path / relative).exists(), f"{name}: {relative}"
-            assert (path / "src").is_dir() != (path / "main").is_dir(), name
+            assert (path / "src").is_dir(), name
+            if espidf(answers):
+                assert (path / "main").is_symlink(), name
+            else:
+                assert not (path / "main").exists(), name
+                assert not (path / "main").is_symlink(), name
             build_roots = [
                 entry for entry in ("platformio.ini", "Cargo.toml") if (path / entry).is_file()
             ]

@@ -10,7 +10,8 @@ Every generated project uses the same top-level structure.
 - `Makefile`, `src/`, `lib/`, `test/host/`, `test/harness/`, `test/functional/`, `resources/`, `references/`, `docs/` and `tools/`
 - A component folder is present when its component is chosen and absent otherwise
 - A toolchain adds its build file and one adapter
-- Three variations, listed in the design: `main/` instead of `src/` for ESP-IDF, `src/bin/` for Cargo, the sketch name for Arduino
+- Two variations, listed in the design: `src/bin/` for Cargo and the sketch name for Arduino
+- `src/` is the one adapter root on every platform; for ESP-IDF a relative `main -> src` symlink supplies the component name the build expects, and it is not a second source root
 - Moving between boards keeps the folders, the make targets and the test tiers; only the answers and the build file change
 
 ## 2. Components opt in

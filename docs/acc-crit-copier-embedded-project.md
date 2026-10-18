@@ -132,9 +132,10 @@ What a generated project holds and which parts are options
   - evidence: tests/test_copy_matrix.py::test_derived_answers_are_never_asked: make test 2026-10-18, 321 passed, 5 skipped
   - test: tests/test_copy_matrix.py::test_copier_answers
   - test-tags: UNIT
-  - mechanism: 2026-10-17T22:27:47Z @kj copier.yml computes each answer from the chosen ones
+  - mechanism: 2026-10-18T12:59:40Z @kj repo_name, author_email, author_name_clean, serial_baud, env_name and the PlatformIO and STM32 mapper answers are computed with when false; project_name and repo_name are computed once and recorded with ask false so copier update reuses them; the questionnaire asks only for choices
   - log: 2026-10-17T22:27:47Z @kj added
   - log: 2026-10-17T23:49:46Z @kj closed
+  - log: 2026-10-18T12:59:40Z @kj mechanism updated "2026-10-17T22:27:47Z @kj copier.yml computes each answer from the chosen ones" -> "repo_name, author_email, author_name_clean, serial_baud, env_name and the PlatformIO and STM32 mapper answers are computed with when false; project_name and repo_name are computed once and recorded with ask false so copier update reuses them; the questionnaire asks only for choices"
 - [x] `ACC-TMPL-18` **The author answer splits into first name, last name and email** - MEDIUM; the author answer splits into first name, last name and email: Konrad Jelen <konrad.jelen@gmail.com> and Stellars Henson stellars.henson@ioata.com give the same three values in either form; the LICENSE carries the full name and the email
   - evidence: tests/test_author.py::test_split_of_the_angle_bracket_form, ::test_split_of_the_bare_email_form, ::test_name_in_angle_brackets and ::test_name_followed_by_the_email: make test 2026-10-18, 321 passed, 5 skipped
   - test: tests/test_author.py: both example strings give first name, last name and email; the LICENSE carries name and email (to extend)

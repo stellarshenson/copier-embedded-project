@@ -226,12 +226,13 @@ def test_stm32_serial_upload_is_documented_as_stm32flash():
 def test_environment_scope_switches_the_export_and_the_installer(
     answers, env_name, installer, scope
 ):
-    """ACC-TMPL-42: the scope switches CONDA_ENVS_PATH; create_environment runs the installer."""
+    """ACC-TMPL-42: the default scope switches CONDA_ENVS_PATH; create_environment runs the installer."""
     with bake(dict(answers, environment_scope=scope)) as project:
         text = (project / "Makefile").read_text()
         assert f"ENV = {env_name}" in text
-        export = "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs"
-        assert (export in text) is (scope == "local")
+        assert f"ENV_SCOPE ?= {scope}" in text
+        assert "ifeq ($(ENV_SCOPE),local)" in text
+        assert "export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs" in text
         expected = str(project / ".conda" / "envs") if scope == "local" else ""
         assert exported_conda_envs_path(project) == expected
         result = subprocess.run(

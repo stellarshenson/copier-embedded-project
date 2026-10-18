@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 
@@ -13,7 +14,6 @@ ADAPTERS = {
     "src/main.c",
     "src/main.cpp",
     f"src/{REPO}.ino",
-    "main/main.c",
     f"src/bin/{REPO}.rs",
 }
 
@@ -52,7 +52,7 @@ CASES = [
     pytest.param(
         {"platform": "esp", "esp_chip": "esp32", "esp_framework": "espidf", "esp_board": "esp32dev"},
         "platformio.ini",
-        "main/main.c",
+        "src/main.c",
         id="esp32-espidf",
     ),
     pytest.param(
@@ -278,7 +278,7 @@ def test_arduino_library_register_follows_the_answer():
             {"platform": "esp", "esp_chip": "esp32", "esp_framework": "espidf",
              "esp_board": "esp32dev"},
             ["platform = espressif32@7.1.3", "board = esp32dev", "framework = espidf",
-             "src_dir = main", "monitor_speed = 115200"],
+             "monitor_speed = 115200", "src_dir = main"],
             [],
             id="esp32-espidf",
         ),
@@ -321,12 +321,17 @@ def test_esp_idf_layout():
         {"platform": "esp", "esp_chip": "esp32", "esp_framework": "espidf", "esp_board": "esp32dev"}
     ) as path:
         present = files(path)
-        assert "main/main.c" in present
-        assert not {name for name in present if name.startswith("src/")}
-        main = read(path, "main/main.c")
+        assert "src/main.c" in present
+        main = read(path, "src/main.c")
         assert "void app_main(void)" in main
         assert "[BOOT] board" in main
         assert "vTaskStartScheduler" not in main
+        link = path / "main"
+        assert link.is_symlink()
+        assert os.readlink(link) == "src"
+        assert (link / "main.c").resolve() == (path / "src/main.c").resolve()
+        ini = read(path, "platformio.ini")
+        assert "[platformio]\nsrc_dir = main" in ini
         sdkconfig = read(path, "sdkconfig.defaults")
         assert "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y" in sdkconfig
         assert "CONFIG_ESP_MAIN_TASK_STACK_SIZE=4096" in sdkconfig
@@ -421,6 +426,23 @@ def test_stm32_rust_target_and_host_tests():
         assert "test = false" in cargo
         assert 'required-features = ["firmware"]' in cargo
         assert 'path = "test/host/core.rs"' in cargo
+
+
+def test_toolchain_skill_names_the_run_time_environment_scope():
+    with bake({"platform": "arduino"}) as path:
+        skill = read(path, ".agents/skills/board-toolchain/SKILL.md")
+        assert "ENV_SCOPE=local" in skill
+        assert "make create_environment ENV_SCOPE=local" in skill
+        assert "global" in skill
+        assert "local" in skill
+        assert "Ask the user whether the environment should be global or local" in skill
+        assert "one large copy on the workstation" in skill
+        assert "same large space inside the project folder" in skill
+
+    with bake({"platform": "arduino", "environment_scope": "local"}) as path:
+        assert "The project default is `local`" in read(
+            path, ".agents/skills/board-toolchain/SKILL.md"
+        )
 
 
 def has_conda_env(name: str) -> bool:

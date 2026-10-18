@@ -21,9 +21,10 @@
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ENV = {{ env_name }}
 ENV_RUN = conda run --no-capture-output -n $(ENV)
-{% if environment_scope == 'local' %}
+ENV_SCOPE ?= {{ environment_scope }}
+ifeq ($(ENV_SCOPE),local)
 export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs
-{% endif %}
+endif
 {% if bridge %}
 DEVICE_DIR := $(shell if [ -w /run/devices ]; then echo /run/devices; else echo /tmp/jupyterlab-device-$$(id -u); fi)
 PORT ?= $(shell ls $(DEVICE_DIR)/tty-* 2>/dev/null | head -n 1)

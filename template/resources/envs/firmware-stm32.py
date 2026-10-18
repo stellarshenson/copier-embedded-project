@@ -17,6 +17,7 @@ RUST = "1.99.0"
 STM32FLASH = "0.7"
 PLATFORMIO = "6.2.0"
 STSTM32 = "20.0.0"
+PYTEST = "9.1.1"
 QEMU = "11.1.2"  # the ARM system emulator; netduinoplus2 carries an STM32F405
 QEMU_URL = f"https://download.qemu.org/qemu-{QEMU}.tar.xz"
 QEMU_SHA256 = "731b5681e4bb18be313231579b8efd0296c5b015fa36dc533874b639ba838016"
@@ -49,6 +50,7 @@ def platformio(env):
     toolchain and the framework of its board, and the second call reuses the platform."""
     env.platformio(PLATFORMIO, f"ststm32@{STSTM32}", "genericSTM32F405RG", framework="stm32cube")
     env.platformio(PLATFORMIO, f"ststm32@{STSTM32}", "bluepill_f103c8", framework="arduino")
+    env.run(env.prefix / "bin/python", "-m", "pip", "install", f"pytest=={PYTEST}")
 
 
 def stm32flash(env):
@@ -79,7 +81,7 @@ install(
         Stage("C compiler, make, pyserial", "conda-forge", conda_packages),
         Stage(f"Rust {RUST} with {len(TARGETS)} Cortex-M targets", "static.rust-lang.org", rust),
         Stage("cargo-binutils", "crates.io", cargo_binutils),
-        Stage(f"PlatformIO {PLATFORMIO}, ststm32 {STSTM32}, STM32Cube and Arduino", "registry.platformio.org", platformio),
+        Stage(f"PlatformIO {PLATFORMIO}, ststm32 {STSTM32}, STM32Cube and Arduino, pytest {PYTEST}", "registry.platformio.org", platformio),
         Stage(f"stm32flash {STM32FLASH}", "sourceforge.net", stm32flash),
         Stage(f"QEMU {QEMU} with the netduinoplus2 machine", "download.qemu.org", qemu),
         Stage("ngspice for the circuit simulation", "conda-forge", circuit),
@@ -91,6 +93,7 @@ install(
         ("cargo objcopy", ["cargo", "objcopy", "--version"]),
         ("pio", ["pio", "--version"]),
         ("PlatformIO platform", f"ststm32 {STSTM32} with STM32Cube and Arduino"),
+        ("pytest", ["pytest", "--version"]),
         ("stm32flash", f"stm32flash {STM32FLASH}"),  # the program has no version option
         ("qemu-system-arm", ["qemu-system-arm", "--version"]),
         ("ngspice", ["ngspice", "--version"]),

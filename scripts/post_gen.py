@@ -88,8 +88,6 @@ def selected_adapter(args: argparse.Namespace) -> str:
         return f"src/bin/{args.repo_name}.rs"
     if args.platform == "arduino":
         return f"src/{args.repo_name}.ino"
-    if args.platform == "esp" and args.esp_framework == "espidf":
-        return "main/main.c"
     if args.platform == "avr" and args.avr_language == "cpp":
         return "src/main.cpp"
     if args.platform == "esp" and args.esp_framework == "arduino":
@@ -166,11 +164,8 @@ def keep_one_adapter(root: Path, args: argparse.Namespace, dry_run: bool) -> Non
             if str(entry.relative_to(root)) != keep:
                 remove(entry, dry_run)
 
-    # ESP-IDF compiles main/, every other toolchain compiles src/.
-    if keep.startswith("main/"):
-        remove(root / "src", dry_run)
-    else:
-        remove(root / "main", dry_run)
+    # Every toolchain compiles src/; main/ is only a compatibility link on ESP-IDF.
+    remove(root / "main", dry_run)
 
 
 def prepare_installers(root: Path, args: argparse.Namespace, dry_run: bool) -> None:
@@ -215,6 +210,14 @@ def create_sketch_link(root: Path, repo_name: str) -> None:
     link.symlink_to(target)
 
 
+def create_main_link(root: Path) -> None:
+    """Link main to src for the ESP-IDF build, which expects a component named main."""
+    if not (root / "src" / "main.c").is_file():
+        print(f"post_gen: {root / 'src' / 'main.c'} is missing; no main link")
+        return
+    create_symlink(root / "main", Path("src"))
+
+
 def link_agents(root: Path) -> None:
     """Link every project skill and the command folder into .claude/."""
     skills = root / ".agents" / "skills"
@@ -252,10 +255,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-name", required=True)
     parser.add_argument("--repo-name", required=True)
-    parser.add_argument("--author-name", default="")
-    parser.add_argument("--description", default="")
     parser.add_argument("--platform", required=True, choices=["arduino", "avr", "esp", "stm32"])
-    parser.add_argument("--esp-chip", default="")
     parser.add_argument("--esp-framework", default="")
     parser.add_argument("--avr-language", default="c")
     parser.add_argument("--components", default="")
@@ -281,6 +281,8 @@ def main(argv: list[str] | None = None) -> int:
     remove_components(root, args.components, dry_run)
     remove_other_toolchain(root, args, dry_run)
     keep_one_adapter(root, args, dry_run)
+    if not dry_run and args.platform == "esp" and args.esp_framework == "espidf":
+        create_main_link(root)
     prepare_installers(root, args, dry_run)
 
     if args.open_source_license == "No license file":

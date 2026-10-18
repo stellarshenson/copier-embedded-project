@@ -267,12 +267,12 @@ components:
 project_name:
   type: str
   default: "{{ _copier_conf.dst_path.name }}"
-  when: false
+  ask: false
 
 repo_name:
   type: str
   default: "{{ project_name.lower().replace(' ', '-') }}"
-  when: false
+  ask: false
 
 # The author is split into the name and the email address: both forms `Name <email>` and
 # `Name email`, in any position, give the same pair. The full name keeps every token that is
@@ -466,8 +466,6 @@ _tasks:
     python3 "{{ _copier_conf.src_path }}/scripts/post_gen.py"
     --project-name "{{ project_name }}"
     --repo-name "{{ repo_name }}"
-    --author-name "{{ author_name }}"
-    --description "{{ description }}"
     --platform "{{ platform }}"
     --avr-language "{{ avr_language | default('') }}"
     --esp-framework "{{ esp_framework | default('') }}"

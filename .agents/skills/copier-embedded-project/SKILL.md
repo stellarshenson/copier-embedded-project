@@ -1,6 +1,6 @@
 ---
 name: copier-embedded-project
-description: Create an embedded firmware project from the copier-embedded-project template - Arduino, bare AVR, ESP or STM32 - or change the template itself. Use when the user says new embedded project, scaffold firmware, copier embedded, or asks to add a board/platform/component to the template.
+description: Create an embedded firmware project from the copier-embedded-project template - Arduino, bare AVR, ESP or STM32 - or change the template itself. Use when the user asks for a new embedded project, to scaffold firmware, to create one from lab-utils, or to add a board, platform or component to the template.
 ---
 
 # copier-embedded-project
@@ -10,14 +10,22 @@ Template repository. `copier.yml` asks the questions, `template/` is the rendere
 
 ## Create a project
 
+Build from this template; a hand-made layout loses the platform answers, installers, Makefile
+targets and tests.
+
 ```bash
 copier copy --trust /home/lab/workspace/private/copier-projects/copier-embedded-project <destination>
 ```
 
 - Answers: `platform`, the downstream questions of that platform, `components` (multiselect) and
   `author_name`, which may carry the email as `Name <email>` or `Name email`
+- `environment_scope`: ask the user before choosing. `global` shares one large environment among
+  projects, in the conda root; `local` sets `CONDA_ENVS_PATH=<project>/.conda/envs` so `make env`
+  installs it under the project, easy to use but its size lands in this project. `global` is the
+  default
 - Use `--defaults -d key=value` for a scripted render; list answers need JSON, e.g.
-  `-d 'components=["notebooks","simulator"]'`
+  `-d 'components=["notebooks","simulator"]'`, and a local environment is
+  `-d environment_scope=local`
 - After a render, `make help` in the new project lists its targets; `make env` installs the
   toolchain from `resources/envs/`
 
@@ -52,3 +60,5 @@ carries the same files for a rendered project.
 
 - ESP and STM32 builds download platforms; they are not part of the fast tests
 - QEMU is absent on this workstation; the harness skip path is what the tests exercise
+
+<!-- improved 2026-10-18 | body 427→427w / 62→62L | benchmark n/a (not-requested) | via improve-skill -->

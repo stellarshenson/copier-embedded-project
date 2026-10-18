@@ -109,7 +109,6 @@ def make_tree(directory: Path) -> None:
         "src/FreeRTOSConfig.h",
         "src/lib.rs",
         "src/bin/board.rs",
-        "main/main.c",
         "Cargo.toml",
         "build.rs",
         "memory.x",
@@ -311,19 +310,19 @@ def test_avr_rust_has_no_linker_script_or_build_script():
         ("avr", {"avr_language": "cpp"}, "src/main.cpp", "src/main.c"),
         (
             "esp",
-            {"esp_chip": "esp32", "esp_framework": "espidf"},
-            "main/main.c",
+            {"esp_framework": "espidf"},
+            "src/main.c",
             "src/main.cpp",
         ),
         (
             "esp",
-            {"esp_chip": "esp32", "esp_framework": "arduino"},
+            {"esp_framework": "arduino"},
             "src/main.cpp",
-            "main/main.c",
+            "src/main.c",
         ),
         (
             "esp",
-            {"esp_chip": "esp8266", "esp_framework": "esp8266-rtos-sdk"},
+            {"esp_framework": "esp8266-rtos-sdk"},
             "src/main.c",
             "src/main.cpp",
         ),
@@ -437,6 +436,57 @@ def test_update_does_not_create_the_sketch_link():
         run_post_gen(directory, operation="update", platform="arduino", arduino_sketch_link="Yes")
 
         assert not (directory / "board.ino").exists()
+
+
+def test_esp_idf_keeps_src_and_links_main_to_it():
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        run_post_gen(directory, platform="esp", esp_framework="espidf")
+
+        assert (directory / "src/main.c").is_file()
+        link = directory / "main"
+        assert link.is_symlink()
+        assert os.readlink(link) == "src"
+        assert link.resolve() == (directory / "src").resolve()
+
+
+def test_update_does_not_create_the_main_link():
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        run_post_gen(
+            directory,
+            operation="update",
+            platform="esp",
+            esp_framework="espidf",
+        )
+
+        assert not (directory / "main").exists()
+        assert not (directory / "main").is_symlink()
+
+
+@pytest.mark.parametrize("existing", ["file", "directory"])
+def test_existing_main_object_makes_create_main_link_leave_it_alone(existing):
+    module = load_module()
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        (directory / "src").mkdir()
+        (directory / "src/main.c").write_text("void app_main(void) {}\n")
+        main = directory / "main"
+        if existing == "file":
+            main.write_text("user file")
+        else:
+            main.mkdir()
+            (main / "user.c").write_text("user file")
+
+        module.create_main_link(directory)
+
+        assert not main.is_symlink()
+        if existing == "file":
+            assert main.read_text() == "user file"
+        else:
+            assert (main / "user.c").read_text() == "user file"
 
 
 def test_no_license_answer_removes_the_license_file():

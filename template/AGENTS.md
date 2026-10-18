@@ -25,7 +25,10 @@
 
 ## Structure
 
-- `{% if espidf %}main/{% else %}src/{% endif %}` - the application adapter
+- `src/` - the application adapter and the master source root
+{% if espidf -%}
+- `main -> src` - compatibility symlink that supplies the ESP-IDF component name
+{% endif -%}
 {% if rust -%}
 - `src/lib.rs` - the shared core; `src/bin/{{ repo_name }}.rs` calls it
 {% else -%}
@@ -57,7 +60,7 @@
 
 - `make help` - list the rendered targets
 {% if installers -%}
-- `make create_environment` (alias `make env`) - install the conda environment `{{ env_name }}`
+- `make create_environment` (alias `make env`) - install the conda environment `{{ env_name }}`; `ENV_SCOPE=local` keeps it under `.conda/envs/` in the project, the default is `{{ environment_scope }}`
 {% else -%}
 - `~/.local/lab-utils/envs/firmware-{% if platform in ['arduino', 'avr'] %}avr{% else %}{{ platform }}{% endif %}.py` - install the toolchain; this project carries no installer
 {% endif -%}

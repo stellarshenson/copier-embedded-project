@@ -17,6 +17,8 @@ Notes for an agent that changes the template.
 
 - Visible questions carry the user's choices; hidden answers (`when: false`) derive board ids,
   platform pins, the baud rate and the rust target from them.
+- `project_name` and `repo_name` use `ask: false` instead: they are computed once and recorded in
+  the answers file, so `copier update` reuses them instead of recomputing them and conflicting.
 - `author_email` and `author_name_clean` split the author answer; the LICENSE consumes both.
 - `pio_platform`, `pio_board`, `pio_framework` and `pio_upload_protocol` are the single source for
   `platformio.ini`; change them there, not in the template file.

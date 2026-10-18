@@ -196,8 +196,12 @@ def test_readme_documents_the_folder_structure_and_targets(answers):
         assert "## Targets" in readme
         structure = section(readme, "Folder structure")
         targets = section(readme, "Targets")
-        adapter = "main/" if answers.get("esp_framework") == "espidf" else "src/"
-        assert f"├── {adapter}" in structure
+        assert "├── src/" in structure
+        if answers.get("esp_framework") == "espidf":
+            assert "├── main -> src" in structure
+        else:
+            assert "main -> src" not in structure
+        assert "`main -> src` compatibility symlink" in readme
         assert "├── lib/" in structure
         assert "├── test/" in structure
         assert re.search(r"^\| `make build` \| build the firmware \|$", targets, re.MULTILINE)

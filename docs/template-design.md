@@ -48,7 +48,9 @@ without the component keeps the same tree.
 
 `platform` is the first entry in `copier.yml` and the first question asked (`ACC-TMPL-15`). The
 platform-specific questions follow it, then the common questions, then `components` last. Derived
-answers use `when: false` and are never asked (`ACC-TMPL-17`).
+answers use `when: false` and are never asked (`ACC-TMPL-17`). `project_name` and `repo_name` are
+the exception: they use `ask: false`, so they are computed once and recorded in the answers file,
+and `copier update` reuses the values instead of recomputing them and conflicting.
 
 ### 2.1 Visible questions
 
@@ -59,7 +61,7 @@ answers use `when: false` and are never asked (`ACC-TMPL-17`).
 | `description` | always | free text; default empty |
 | `open_source_license` | always | `Apache-2.0`, `MIT`, `No license file`; default `MIT` |
 | `git_init` | always | `Yes`, `No`; default `Yes` |
-| `environment_scope` | always | `global`, `local`; default `global` (`ACC-TMPL-42`) |
+| `environment_scope` | always | `global`, `local`; sets the default of `ENV_SCOPE`; default `global` (`ACC-TMPL-42`) |
 | `arduino_board` | `platform == 'arduino'` | `uno`, `nano`, `mega2560`, `leonardo`, `other`; default `uno` |
 | `arduino_board_custom` | arduino and `other` | PlatformIO board id; required |
 | `arduino_bootloader` | arduino and `nano` | `old`, `new`; default `old` |
@@ -124,9 +126,10 @@ With all components selected, every project renders:
 ├── CHANGELOG.md
 ├── LICENSE                    # unless No license file
 ├── Makefile
-├── src/                       # main/ instead for ESP-IDF
-│   ├── <adapter>
+├── src/                       # the adapter root on every platform
+│   ├── main.c                 # ESP-IDF adapter with app_main
 │   └── <adapter helpers>
+├── main -> src                # ESP-IDF only: compatibility link naming the main component
 ├── lib/
 │   ├── README.md              # library register
 │   ├── core/                  # C and C++
@@ -167,14 +170,14 @@ The pure logic is one module per project (`ACC-TMPL-44`):
 
 | Language | Core | Host test | Adapter |
 |---|---|---|---|
-| C, C++ | `lib/core/core.c`, `lib/core/core.h` | `test/host/test_core.c` compiles `lib/core/core.c` directly | `src/main.c`, `src/main.cpp`, `src/<repo>.ino`, `main/main.c` |
+| C, C++ | `lib/core/core.c`, `lib/core/core.h` | `test/host/test_core.c` compiles `lib/core/core.c` directly | `src/main.c` (`app_main` on ESP-IDF), `src/main.cpp`, `src/<repo>.ino` |
 | Rust | `src/lib.rs` | `test/host/core.rs`, wired as a Cargo `[[test]]` target | `src/bin/<repo>.rs` |
 
 The C/C++ adapter includes `"core.h"`.
 
 - PlatformIO adds `lib/core` to the include path as a project library
 - For ESP-IDF the PlatformIO library dependency finder compiles `lib/core` as a component named `core`
-- `main/main.c` includes `"core.h"`
+- The ESP-IDF `src/main.c` includes `"core.h"`
 - The host test compiles the same source with the host compiler
 - A break in the core fails on the host before a board is touched
 
@@ -193,7 +196,7 @@ The Rust core is the package library.
 | Bare AVR C | `platformio.ini` | `src/main.c` | none |
 | Bare AVR C++ | `platformio.ini` | `src/main.cpp` | none |
 | Bare AVR Rust | `Cargo.toml`, `.cargo/config.toml`, `rust-toolchain.toml` | `src/bin/<repo>.rs` | `src/bin/` for Cargo |
-| ESP32 ESP-IDF (PlatformIO) | `platformio.ini`, `sdkconfig.defaults` | `main/main.c` with `app_main` | `main/` replaces `src/` |
+| ESP32 ESP-IDF (PlatformIO) | `platformio.ini`, `sdkconfig.defaults` | `src/main.c` with `app_main` | `main -> src` compatibility symlink |
 | ESP32 Arduino | `platformio.ini` | `src/main.cpp` | none |
 | ESP8266 Arduino | `platformio.ini` | `src/main.cpp` | none |
 | ESP8266 RTOS SDK | `platformio.ini`, `sdkconfig.defaults` | `src/main.c` with `user_init` | none |
@@ -211,10 +214,14 @@ Rules per toolchain, from `docs/best-practices.md`:
   root is a sketch folder when its folder name is `repo_name`. PlatformIO remains the supported
   build because the shared core sits in `lib/core` and the Arduino CLI compiles only the sketch and
   `src/`.
-- ESP-IDF: `main/` is the application component; `platformio.ini` sets `src_dir = main`;
-  `app_main` creates one task that prints `[BOOT] <repo>`; the scheduler already runs, so the
-  starter never calls `vTaskStartScheduler()`. `sdkconfig.defaults` is committed; `sdkconfig` is
-  ignored. PlatformIO generates the component build files; no hand-written `CMakeLists.txt`.
+- ESP-IDF: `src/` is the source root. PlatformIO sets `src_dir = main`, so it compiles
+  `src/main.c` once through the application component; the default `src_dir = src` would add a
+  second project source beside the component the link exposes, and PlatformIO rejects that build.
+  `src/main.c` carries `app_main`, which creates one task that prints `[BOOT] <repo>`; the scheduler
+  already runs, so the starter never calls `vTaskStartScheduler()`. A relative `main -> src` symlink
+  supplies the application component name the ESP-IDF build expects; it is a link, not a second
+  source root. `sdkconfig.defaults` is committed; `sdkconfig` is ignored. PlatformIO generates the
+  component build files; no hand-written `CMakeLists.txt`.
 - ESP8266 RTOS SDK: IDF-style sources on the RTOS SDK; `user_init` starts one task that prints the
   boot line. The RTOS SDK release is pinned to the installed framework.
 - STM32Cube: `src/main.c` performs the HAL init and creates one CMSIS-RTOS task that prints the boot
@@ -230,7 +237,8 @@ Rules per toolchain, from `docs/best-practices.md`:
 
 One build root exists per project: `platformio.ini` or `Cargo.toml`, never both. `post_gen` removes
 the branch that the answers did not select, so the rendered project has exactly one build file and
-one adapter.
+one adapter. Every branch carries one real source root, `src/`; on ESP-IDF `main` is a relative
+symlink to `src`, not a source root.
 
 ## 4. Makefile
 
@@ -279,23 +287,36 @@ including `build`, `upload`, `monitor`, `test`, `sim` and the EEPROM targets (`A
 
 ### 4.3 Environment scope
 
-`global` scope uses the environment name as it is. The installer calls `conda create --name $(ENV)`,
-so the environment lands in the conda root.
+The copier answer `environment_scope` sets the default of the Makefile variable `ENV_SCOPE`. Any
+make invocation may pass `ENV_SCOPE=global` or `ENV_SCOPE=local`, and the same value goes to every
+make command for the project.
 
-`local` scope adds one line to the Makefile:
+The Makefile carries one run-time conditional in every render:
 
 ```
+ENV_SCOPE ?= <the copier answer>
+ifeq ($(ENV_SCOPE),local)
 export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs
+endif
 ```
 
-- Every conda subprocess inherits the variable
-- `conda create --name $(ENV)` creates the environment under the project
+`global` scope uses the environment name as it is. The installer calls `conda create --name $(ENV)`,
+so one copy lands in the conda root and every project that uses the same environment name shares it.
+The copy is large.
+
+`local` scope makes the `ifeq` export `CONDA_ENVS_PATH`, so the installer creates the environment
+under `.conda/envs/` in the project. The environment is easy to use with this project, and it takes
+the same large space inside the project folder. The toolchain skill asks the user for the scope and
+explains the trade-off.
+
+- In local scope every conda subprocess inherits the variable
+- `conda create --name $(ENV)` creates the environment under the project in local scope
 - `conda run -n $(ENV)` and `conda env list --json` resolve the same prefix
 - The installer files stay byte-identical to the lab copies
 - Nothing under `~/.local/lab-utils/envs` or `~/.local` is edited (`ACC-TMPL-42`)
 - `.conda/` is in `.gitignore`
 - The installer's own log at `~/.local/<env>.out` is unchanged installer behaviour, not a configuration edit
-- With `env-installers` unselected, the Makefile still exports `CONDA_ENVS_PATH` in local scope, so a lab installer run by hand with the same variable creates the environment the targets then use
+- With `env-installers` unselected, the Makefile still carries the `ENV_SCOPE` conditional, so a lab installer run by hand with `CONDA_ENVS_PATH` set the same way creates the environment the targets then use
 
 ### 4.4 Build, upload and monitor by branch
 
@@ -353,8 +374,8 @@ with a written reason and never passes silently (`ACC-TMPL-32`, `ACC-TMPL-33`, `
 `AGENTS.md` is always rendered at the repository root (`ACC-TMPL-14`). It carries:
 
 - Project name, description and platform.
-- Structure: `src/` or `main/`, `lib/core`, the three test tiers, `resources/`, `references/`,
-  `docs/`, `tools/`.
+- Structure: `src/`, the `main -> src` link on ESP-IDF, `lib/core`, the three test tiers,
+  `resources/`, `references/`, `docs/`, `tools/`.
 - Commands: `make create_environment`, `make build`, `make upload PORT=...`, `make monitor`,
   `make test`, `make sim`, `make clean`, with `make help` as the index.
 - Test tiers and the board's row from the capability matrix.
@@ -468,9 +489,10 @@ Toolchain paths:
   `src/lib.rs`, `src/bin/` and `test/host/core.rs`. Rust branches remove `platformio.ini`,
   `src/main.c`, `src/main.cpp`, `src/*.ino`, `src/FreeRTOSConfig.h`, `lib/core/` and
   `test/host/test_core.c`.
-- The adapter selection keeps exactly one of `src/main.c`, `src/main.cpp`, `src/<repo>.ino`,
-  `main/main.c` and `src/bin/<repo>.rs`.
-- ESP-IDF keeps `main/` and removes `src/`; every other branch keeps `src/` and removes `main/`.
+- The adapter selection keeps exactly one of `src/main.c`, `src/main.cpp`, `src/<repo>.ino` and
+  `src/bin/<repo>.rs`.
+- ESP-IDF keeps `src/` and creates the relative `main -> src` symlink; every branch removes the
+  `main/` source directory.
 - STM32 keeps the one installer, `firmware-stm32.py`, for both toolchains; it removes every other
   platform installer. Every other platform keeps its own installer and removes the rest, so a
   render carries `firmware_env.py` and one platform installer. Installers keep the executable bit.
