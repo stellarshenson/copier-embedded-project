@@ -28,6 +28,7 @@ make build
 | `esp_chip`, `esp_framework`, `esp_board` | ESP32 or ESP8266; ESP-IDF, Arduino or the RTOS SDK |
 | `stm32_toolchain` | `rust` or `platformio`; both use the one `firmware-stm32` environment |
 | `stm32_board`, `stm32_framework`, `stm32_upload` | board family, STM32Cube or Arduino, ST-Link or serial |
+| `host_side`, `host_module` | `Yes` adds `host/`, a Python package that reads the board over serial on the PC; `host_module` names it, default `<repo without hyphens>_host` |
 | `components` | multi-select: `notebooks`, `resources`, `references`, `data`, `simulator`, `docs`, `ci`, `agents`, `env-installers`, `device-bridge`, `ltspice` |
 | `open_source_license` | `Apache-2.0`, `MIT`, or no license file |
 | `author_name` | a name, optionally with the email: `Konrad Jelen <konrad.jelen@gmail.com>` or `Konrad Jelen konrad.jelen@gmail.com` |
@@ -125,10 +126,11 @@ template/                      the rendered project
 ├── src/                       adapters: main.c, main.cpp, <repo>.ino; src/bin/<repo>.rs in Cargo projects
 ├── lib/                       lib/core for C and C++, the library register, lib/vendor for Arduino
 ├── test/                      test/host, test/harness, test/functional
-├── tools/                     eeprom_tool.py and, for STM32Cube, freertos.py
+├── scripts/                   PC-side helper scripts with no interactive input and one JSON line of output:
+│                              eeprom_tool.py, and freertos.py, the STM32Cube build hook
 ├── resources/                 README, graphics/, external/, envs/ installers, eeprom/ images
 ├── references/                datasheets/, notes/, schematics/ for the PCB schematic and board files
-├── ltspice/                   opt-in circuit netlist, runner and functional test
+├── simulations/               opt-in circuit netlist, runner and functional test
 ├── notebooks/, data/, docs/   opt-in components
 ├── .agents/                   device skill and workflow; .claude/ holds the links
 └── .github/                   opt-in CI workflow

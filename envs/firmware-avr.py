@@ -84,6 +84,6 @@ install(
         'RUSTFLAGS="-C target-cpu=atmega328p" cargo build --release -Z build-std=core --target avr-none',
         "avrdude -c arduino -p atmega328p -P <serial device> -U flash:w:<firmware>.elf",
         "pio run --target upload --upload-port <serial device>    (in a PlatformIO project)",
-        "ngspice -b ltspice/circuit.cir    (the opt-in ltspice component runs the surrounding circuit)",
+        "ngspice -b simulations/circuit.cir    (the opt-in ltspice component runs the surrounding circuit)",
     ],
 )

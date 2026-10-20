@@ -153,6 +153,11 @@ with serial.Serial("<port>", {{ serial_baud }}, timeout=1) as port:
             break
 PY
 ```
+{%- if host_side == 'Yes' %}
+
+`make host-run PORT=<port>` reads the boot line non-interactively with the host application and
+prints one JSON line.
+{%- endif %}
 {%- else -%}
 The {{ part[0] }} has no UART, so the board prints no console. Confirm the boot behaviour in the
 simulator, or decode the signal pin with a logic analyser.

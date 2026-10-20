@@ -10,7 +10,7 @@
 {%- set eeprom = platform in ['arduino', 'avr'] -%}
 {%- set avr_harness = simulator and ((platform == 'arduino' and arduino_board in ['uno', 'nano']) or (platform == 'avr' and avr_mcu in ['atmega328p', 'attiny85'])) -%}
 {%- set avr_programmer_id = ('arduinoisp' if avr_programmer == 'arduino-isp' else 'usbasp') if platform == 'avr' else '' -%}
-.PHONY: help {% if installers %}create_environment env {% endif %}build upload monitor test host-test{% if simulator %} sim{% endif %}{% if ltspice %} ltspice{% endif %}{% if eeprom %} eeprom-backup eeprom-restore{% endif %} increment_version clean
+.PHONY: help {% if installers %}create_environment env {% endif %}build upload monitor test host-test{% if host_side == 'Yes' %} host-run host-app-test{% endif %}{% if simulator %} sim{% endif %}{% if ltspice %} ltspice{% endif %}{% if eeprom %} eeprom-backup eeprom-restore{% endif %} increment_version clean
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -89,8 +89,8 @@ monitor:
 	$(ENV_RUN) pio device monitor --port $(PORT) -b $(BAUD)
 {%- endif %}
 
-## Run the host unit tests{% if simulator %} and the simulator tests{% endif %}{% if ltspice %} and the circuit test{% endif %}
-test: host-test{% if simulator %} sim{% endif %}{% if ltspice %} ltspice{% endif %}
+## Run the host unit tests{% if host_side == 'Yes' %} and the host application tests{% endif %}{% if simulator %} and the simulator tests{% endif %}{% if ltspice %} and the circuit test{% endif %}
+test: host-test{% if host_side == 'Yes' %} host-app-test{% endif %}{% if simulator %} sim{% endif %}{% if ltspice %} ltspice{% endif %}
 
 host-test:
 	@mkdir -p $(BUILD_DIR)
@@ -100,6 +100,16 @@ host-test:
 	@echo "$(MSG_PREFIX) compiling the host unit tests"
 	$(ENV_RUN) $(HOST_CC) -std=c11 -Wall -Wextra -I lib/core lib/core/core.c test/host/test_core.c -o $(BUILD_DIR)/host-test
 	$(ENV_RUN) ./$(BUILD_DIR)/host-test
+{%- endif %}
+{%- if host_side == 'Yes' %}
+
+## Read the boot line from the board on $(PORT) with the host application
+host-run:
+	$(ENV_RUN) env PYTHONPATH=host/src python -m {{ host_module }} --port $(PORT) --baud $(BAUD)
+
+## Run the host application tests
+host-app-test:
+	$(ENV_RUN) env PYTHONPATH=host/src pytest host/tests -q
 {%- endif %}
 {% if simulator %}
 
@@ -144,17 +154,17 @@ sim: build{% if avr_harness %} $(SIMHARNESS){% endif %}
 
 ## Simulate the surrounding circuit with LTspice or ngspice
 ltspice:
-	$(ENV_RUN) pytest ltspice -q
+	$(ENV_RUN) pytest simulations -q
 {% endif %}
 {% if eeprom %}
 
 # Back up the board EEPROM under resources/eeprom/ and print one JSON line
 eeprom-backup:
-	$(ENV_RUN) python tools/eeprom_tool.py backup{% if platform == 'arduino' %} --board {{ pio_board }}{% endif %} --port $(PORT){% if platform == 'avr' %} --mcu {{ avr_mcu_custom if avr_mcu == 'other' else avr_mcu }} --programmer {{ avr_programmer_id }}{% endif %}
+	$(ENV_RUN) python scripts/eeprom_tool.py backup{% if platform == 'arduino' %} --board {{ pio_board }}{% endif %} --port $(PORT){% if platform == 'avr' %} --mcu {{ avr_mcu_custom if avr_mcu == 'other' else avr_mcu }} --programmer {{ avr_programmer_id }}{% endif %}
 
 # Restore an EEPROM image and verify the read-back
 eeprom-restore:
-	$(ENV_RUN) python tools/eeprom_tool.py restore{% if platform == 'arduino' %} --board {{ pio_board }}{% endif %} --port $(PORT){% if platform == 'avr' %} --mcu {{ avr_mcu_custom if avr_mcu == 'other' else avr_mcu }} --programmer {{ avr_programmer_id }}{% endif %}
+	$(ENV_RUN) python scripts/eeprom_tool.py restore{% if platform == 'arduino' %} --board {{ pio_board }}{% endif %} --port $(PORT){% if platform == 'avr' %} --mcu {{ avr_mcu_custom if avr_mcu == 'other' else avr_mcu }} --programmer {{ avr_programmer_id }}{% endif %}
 {% endif %}
 
 ## Remove build output and caches

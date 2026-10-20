@@ -106,6 +106,6 @@ install(
         "stm32flash -w firmware.bin -v <serial device>",
         "pio run    (in a PlatformIO project; the platform and framework come from platformio.ini)",
         "qemu-system-arm -machine netduinoplus2 -display none -serial null -serial stdio -kernel <firmware.elf>    (the simulator tier uses it)",
-        "ngspice -b ltspice/circuit.cir    (the opt-in ltspice component runs the surrounding circuit)",
+        "ngspice -b simulations/circuit.cir    (the opt-in ltspice component runs the surrounding circuit)",
     ],
 )

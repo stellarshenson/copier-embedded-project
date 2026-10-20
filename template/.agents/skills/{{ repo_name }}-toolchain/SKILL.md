@@ -88,20 +88,20 @@ Read `references/toolchains.md` when the installer fails or a tool reports an un
 {% if has_ltspice %}
 ## Run LTspice
 
-1. `make ltspice ENV_SCOPE=<scope>`. It runs `pytest ltspice -q` in the environment. A pass prints
-   pytest output, not JSON.
-2. For the single JSON line, run `conda run -n {{ env_name }} python ltspice/run.py`; in local scope
-   prefix it with `CONDA_ENVS_PATH=$PWD/.conda/envs`. When the netlist ran, the line carries `ran`,
-   `command`, `vhigh`, `vlow` and `ok`.
+1. `make ltspice ENV_SCOPE=<scope>`. It runs `pytest simulations -q` in the environment. A pass
+   prints pytest output, not JSON.
+2. For the single JSON line, run `conda run -n {{ env_name }} python simulations/run.py`; in local
+   scope prefix it with `CONDA_ENVS_PATH=$PWD/.conda/envs`. When the netlist ran, the line carries
+   `ran`, `command`, `vhigh`, `vlow` and `ok`.
    - `"ok": true` - the circuit passed; stop.
    - `"ran": false` - neither LTspice nor ngspice is installed; run
      {% if has_installers %}`make create_environment ENV_SCOPE=<scope>`{% else %}the installer with the same scope{% endif %}, then repeat step 2.
    - `"ok": false` - the gain is wrong; `vhigh` must be 5 V and `vlow` 0 V, each within 0.05 V.
-3. `ltspice/circuit.log` is written by LTspice only. Under ngspice it does not exist, and `run.py`
-   captures the simulator text itself.
+3. `simulations/circuit.log` is written by LTspice only. Under ngspice it does not exist, and
+   `run.py` captures the simulator text itself.
 4. The test skips when neither simulator is installed. Read the reason before you report the result.
-5. Run a simulator by hand only to inspect it: `ltspice -b ltspice/circuit.cir` when LTspice is on
-   the PATH, otherwise `ngspice -b ltspice/circuit.cir`.
+5. Run a simulator by hand only to inspect it: `ltspice -b simulations/circuit.cir` when LTspice is
+   on the PATH, otherwise `ngspice -b simulations/circuit.cir`.
 
 The netlist models the ATtiny84 pin as a 0-5 V pulse at 1 kHz, divided to 2.5 V and amplified by a
 non-inverting op-amp with gain 2. The firmware is not co-simulated: the pin is the voltage source the

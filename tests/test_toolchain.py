@@ -365,8 +365,8 @@ def test_stm32cube_layout():
         assert "configTICK_RATE_HZ" in config
         assert "configMAX_SYSCALL_INTERRUPT_PRIORITY" in config
         ini = read(path, "platformio.ini")
-        assert "extra_scripts = pre:tools/freertos.py" in ini
-        script = read(path, "tools/freertos.py")
+        assert "extra_scripts = pre:scripts/freertos.py" in ini
+        script = read(path, "scripts/freertos.py")
         assert "BuildSources" in script
         assert 'portable' in script
         assert "heap_4.c" in script

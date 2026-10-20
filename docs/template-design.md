@@ -31,18 +31,20 @@ Eleven components. `components` is a multiselect; the default selection is
 | `ci` | off | `.github/workflows/build.yml`: build and test, cached environment, firmware artifact, `v*` tag release; a guard when `env-installers` is absent | `.github/` |
 | `agents` | on | `.agents/skills/<repo>-device/SKILL.md`, `.agents/workflows/build-and-flash.md`, the `.claude` links | `.agents/`, `.claude/skills/`, `.claude/commands` |
 | `env-installers` | on | `resources/envs/firmware_env.py`, the platform installer, the `create_environment` target | `resources/envs/`; the target is not rendered |
-| `ltspice` | off | `ltspice/README.md`, `ltspice/circuit.cir` (ATtiny84 pin driving a gain-2 op-amp), `ltspice/run.py` and `ltspice/test_circuit.py`; the `ltspice` target, and `test` depends on it | `ltspice/` and the target |
+| `ltspice` | off | `simulations/README.md`, `simulations/circuit.cir` (ATtiny84 pin driving a gain-2 op-amp), `simulations/run.py` and `simulations/test_circuit.py`; the `ltspice` target, and `test` depends on it | `simulations/` and the target |
 | `device-bridge` | off | README section, Makefile `DEVICE_DIR` and `PORT` default, device skill section | no owned path; render conditions only |
 
 Always rendered, independent of `components`: `AGENTS.md`, `CLAUDE.md`, `Makefile`, `CHANGELOG.md`,
 `.gitignore`, `.copier-answers.yml`, `LICENSE` (unless the license answer is `No license file`),
-`src/`, `lib/`, `test/host/`, `tools/`, and the toolchain build file.
+`src/`, `lib/`, `test/host/`, `scripts/`, and the toolchain build file.
 
 `AGENTS.md` and `CLAUDE.md` are not owned by `agents`: `ACC-TMPL-14` requires both at the repository
 root in every project. The `agents` component owns the master tree and the links only.
 
 `device-bridge` owns no path. It changes rendered text and the Makefile `PORT` default; a project
 without the component keeps the same tree.
+
+`host/` is not a component. The `host_side` question adds it; section 3.5 holds its layout.
 
 ### 1.1 The ci component
 
@@ -56,7 +58,8 @@ Linux-only, because the installers are x86-64 Linux.
   an installer change invalidates the cache
 - Build and test: `make build` and `make test`; the platform output is copied to `dist/` and uploaded
   as the `firmware` artifact. PlatformIO branches collect `.pio/build/<board>/*.bin`, `*.elf` and
-  `*.hex`; Rust branches collect `target/<target>/release/<repo>`
+  `*.hex`; AVR Rust collects `target/<target>/release/<repo>.elf` and STM32 Rust
+  `target/<target>/release/<repo>`
 - Failure log: an upload step with `if: failure()` collects `~/.local/*.out`, so a stopped installer
   stage is visible
 - Tag release: a `v*` tag equal to `v` plus the contents of `VERSION` downloads the firmware artifact
@@ -81,10 +84,11 @@ The template repository runs its own `.github/workflows/test.yml` (`ACC-TMPL-55`
 ## 2. Questions
 
 `platform` is the first entry in `copier.yml` and the first question asked (`ACC-TMPL-15`). The
-platform-specific questions follow it, then the common questions, then `components` last. Derived
-answers use `when: false` and are never asked (`ACC-TMPL-17`). `project_name` and `repo_name` are
-the exception: they use `ask: false`, so they are computed once and recorded in the answers file,
-and `copier update` reuses the values instead of recomputing them and conflicting.
+platform-specific questions follow it, then the common questions, then `host_side` and
+`host_module`, then `components` last. Derived answers use `when: false` and are never asked
+(`ACC-TMPL-17`). `project_name` and `repo_name` are the exception: they use `ask: false`, so they
+are computed once and recorded in the answers file, and `copier update` reuses the values instead
+of recomputing them and conflicting.
 
 ### 2.1 Visible questions
 
@@ -113,6 +117,8 @@ and `copier update` reuses the values instead of recomputing them and conflictin
 | `stm32_board` | `platform == 'stm32'` | `f405rg`, `f103c8`, `f411re`, `l476rg`; default `f405rg` |
 | `stm32_framework` | stm32 and `platformio` | `stm32cube`, `arduino`; default `stm32cube` |
 | `stm32_upload` | stm32 and `platformio` | `stlink`, `serial`; default `serial` for f405rg, `stlink` otherwise |
+| `host_side` | always, directly before `components` | `No`, `Yes`; default `No`; `Yes` adds `host/` and the host targets (section 3.5, `ACC-TMPL-59-HOST-SIDE`) |
+| `host_module` | `host_side == 'Yes'` | Python module name; default `repo_name` without `-` plus `_host`, so `weather-station` gives `weatherstation_host` and `board` gives `board_host`; the validator rejects a value that is not a Python identifier (`ACC-TMPL-60-HOST-MODULE`) |
 | `components` | always | multiselect of the ten; default `notebooks, resources, references, simulator, agents, env-installers` |
 
 ### 2.2 Derived answers
@@ -186,9 +192,11 @@ With all components selected, every project renders:
 ├── data/                      # data component
 ├── docs/                      # docs component
 ├── notebooks/                 # notebooks component
-├── tools/
+├── scripts/                   # PC-side helper scripts; section 3.6
 │   ├── README.md
-│   └── eeprom_tool.py         # Arduino and bare AVR only
+│   ├── eeprom_tool.py         # Arduino and bare AVR only
+│   └── freertos.py            # STM32Cube only; PlatformIO build hook
+├── host/                      # host_side == Yes; section 3.5
 ├── .agents/                   # agents component
 ├── .claude/                   # agents component; links only
 └── .github/                   # ci component
@@ -274,6 +282,62 @@ the branch that the answers did not select, so the rendered project has exactly 
 one adapter. Every branch carries one real source root, `src/`; on ESP-IDF `main` is a relative
 symlink to `src`, not a source root.
 
+### 3.5 Host side
+
+`host_side == 'Yes'` adds `host/`, a Python package that runs on the PC and talks to the board over
+the serial port (`ACC-TMPL-61-HOST-SCAFFOLD`). With `No` the project has no `host/` path, no host
+targets and no host text in `README.md`, `AGENTS.md` or the skills (`ACC-TMPL-59-HOST-SIDE`).
+
+```
+host/
+├── pyproject.toml             # distribution <repo>-host, setuptools, src layout, pyserial, Python >= 3.10
+├── src/
+│   └── <host_module>/
+│       ├── __init__.py
+│       ├── __main__.py        # python -m <host_module> --port PORT --baud BAUD --timeout SECONDS
+│       ├── serial_client.py   # read_boot_line(lines, expected, timeout), open_port(port, baud)
+│       └── protocol.py        # crc8(data) -> int, the algorithm of the core CRC
+└── tests/
+    ├── test_serial_client.py  # read_boot_line with a fake line list: found, absent, timeout
+    └── test_protocol.py       # crc8 against fixed vectors of the core algorithm
+```
+
+- `__main__.py` reads the console until `[BOOT] <repo>` and prints one JSON line with `port`,
+  `boot` and `line`. It exits 0 when the boot line arrived and 1 with the reason otherwise.
+- `read_boot_line` takes any iterable of text lines, so the tests need no hardware. `open_port`
+  imports pyserial inside the function.
+- `protocol.crc8` uses the polynomial `0x07`, the initial value `0x00` and the most significant bit
+  first, the same as `core_crc8` in `lib/core/core.c` and `crc8` in `src/lib.rs`
+  (`ACC-TMPL-63-HOST-CRC`).
+- The package runs on the PC only. PlatformIO, ESP-IDF and Cargo never compile `host/`.
+- `make host-run` imports pyserial from the project environment. `firmware-avr`, `firmware-esp`
+  and `firmware-stm32` each install pyserial in their first conda stage.
+- `pip install -e host` inside the environment makes the package importable from notebooks; the
+  make targets set `PYTHONPATH=host/src` and need no install.
+- `host/` is in `_skip_if_exists` (section 7.2), so `copier update` keeps user edits.
+
+A Python host keeps its module under `host/src/<host_module>/`, the src layout of a Python package.
+A host in another language would place its code directly in `host/src/`. The template generates the
+Python form only.
+
+Host code lives in `host/src/<package>` and not under `src/`, because everything under `src/` is
+built for the board: PlatformIO compiles `src/`, ESP-IDF reaches it through `main -> src`, and
+`cargo build --target` builds every file in `src/bin/`. `scripts/` stays for small non-interactive
+commands that an agent runs (section 3.6).
+
+### 3.6 Helper scripts
+
+`scripts/` is always rendered and holds the PC-side helper scripts (`ACC-TMPL-64-SCRIPTS`).
+`scripts/README.md` states the contract:
+
+- A script runs on the PC, takes no interactive input, prints one JSON line and exits non-zero with
+  a reason on failure, so an agent can run it.
+- `eeprom_tool.py` serves `make eeprom-backup` and `make eeprom-restore` on Arduino and bare AVR
+  (section 4.5).
+- `freertos.py` is the one exception: a PlatformIO build hook that `platformio.ini` names in
+  `extra_scripts = pre:scripts/freertos.py` on STM32Cube. It is not a command for a person or an
+  agent.
+
 ## 4. Makefile
 
 ### 4.1 Targets
@@ -286,10 +350,12 @@ symlink to `src`, not a source root.
 | `upload` | `pio run -t upload --upload-port $(PORT)`, `stm32flash`, or `avrdude` | always |
 | `monitor` | `pio device monitor`, or `python -m serial.tools.miniterm` | always |
 | `host-test` | compile and run `test/host`; no `##` line, so help does not list it | always |
-| `test` | `host-test`, plus `sim` when `simulator` is selected | always |
+| `test` | `host-test`, plus `sim` when `simulator` is selected, plus `host-app-test` when `host_side` is `Yes` | always |
 | `sim` | `$(ENV_RUN) pytest test/functional -q` | `simulator` |
-| `eeprom-backup` | `tools/eeprom_tool.py` reads EEPROM to `resources/eeprom/` | arduino and avr |
-| `eeprom-restore` | `tools/eeprom_tool.py` writes with avrdude `-D` and verifies the read-back | arduino and avr |
+| `host-run` | `$(ENV_RUN) env PYTHONPATH=host/src python -m <host_module> --port $(PORT) --baud $(BAUD)` | `host_side == 'Yes'` |
+| `host-app-test` | `$(ENV_RUN) env PYTHONPATH=host/src pytest host/tests -q` | `host_side == 'Yes'` |
+| `eeprom-backup` | `scripts/eeprom_tool.py` reads EEPROM to `resources/eeprom/` | arduino and avr |
+| `eeprom-restore` | `scripts/eeprom_tool.py` writes with avrdude `-D` and verifies the read-back | arduino and avr |
 | `clean` | remove build output and caches; keep `.conda/` and `resources/eeprom/` | always |
 | `help` | print the `##` line of each rendered target | always |
 
@@ -297,8 +363,10 @@ No target named `erase` exists.
 
 `help` lists `create_environment`, `build`, `upload`, `monitor`, `test`, `sim`, `clean` and `help`
 with their descriptions (`ACC-TMPL-7`). A target whose component is absent is not listed. With
-`env-installers` unselected, `help` prints one line naming the lab installer to run:
-`~/.local/lab-utils/envs/firmware-<platform>.py` (`ACC-TMPL-4`).
+`host_side == 'Yes'` it also lists `host-run` and `host-app-test` (`ACC-TMPL-62-HOST-TARGETS`).
+`host-test` keeps its name: it tests the shared core with the host compiler, and `host-app-test`
+tests the PC package. With `env-installers` unselected, `help` prints one line naming the lab
+installer to run: `~/.local/lab-utils/envs/firmware-<platform>.py` (`ACC-TMPL-4`).
 
 ### 4.2 Variables
 
@@ -307,15 +375,16 @@ with their descriptions (`ACC-TMPL-7`). A target whose component is absent is no
 | `ENV` | `{{ env_name }}` | the conda environment name |
 | `ENV_RUN` | `conda run --no-capture-output -n $(ENV)` | prefix of every toolchain command |
 | `PROJECT_DIR` | the Makefile directory | paths and the local environment root |
-| `PORT` | `/dev/ttyUSB0`, or the first bridge pty when `device-bridge` is selected | upload and monitor |
-| `BAUD` | `{{ serial_baud }}` | monitor, upload, stm32flash |
+| `PORT` | `/dev/ttyUSB0`, or the first bridge pty when `device-bridge` is selected | upload, monitor, host-run |
+| `BAUD` | `{{ serial_baud }}` | monitor, upload, stm32flash, host-run |
 | `STM32_SERIAL_MODE` | `8n1` with `device-bridge`, else `8e1` | `stm32flash -m` |
 | `DEVICE_DIR` | `/run/devices` if writable, else `/tmp/jupyterlab-device-$(shell id -u)` | bridge pty discovery |
 | `HOST_CC` | `x86_64-conda-linux-gnu-cc` | host tests |
 | `BUILD_DIR` | `build` | host test binary and Rust binary output |
 
 Every target that calls a toolchain program runs inside the environment through `$(ENV_RUN)`,
-including `build`, `upload`, `monitor`, `test`, `sim` and the EEPROM targets (`ACC-TMPL-12`).
+including `build`, `upload`, `monitor`, `test`, `sim`, the EEPROM targets and the host targets
+(`ACC-TMPL-12`).
 `create_environment` runs the installer directly because the environment does not exist yet;
 `help` runs host `python3`.
 
@@ -367,7 +436,7 @@ STM32 ROM bootloader uses `8e1`. `STM32_SERIAL_MODE` carries that difference in 
 
 `eeprom-backup` reads the EEPROM image into `resources/eeprom/<board>-<timestamp>.bin` and prints
 one JSON line. `eeprom-restore` writes with `avrdude -D` and reads the image back for comparison
-before it reports success. Both targets run `tools/eeprom_tool.py` under `$(ENV_RUN)` and are
+before it reports success. Both targets run `scripts/eeprom_tool.py` under `$(ENV_RUN)` and are
 non-interactive, so an agent can run them (`ACC-TMPL-39`). They exist only for Arduino and bare AVR.
 
 ## 5. Capability matrix
@@ -409,9 +478,10 @@ with a written reason and never passes silently (`ACC-TMPL-32`, `ACC-TMPL-33`, `
 
 - Project name, description and platform.
 - Structure: `src/`, the `main -> src` link on ESP-IDF, `lib/core`, the three test tiers,
-  `resources/`, `references/`, `docs/`, `tools/`.
+  `resources/`, `references/`, `docs/`, `scripts/`, and `host/` with `host_side == 'Yes'`.
 - Commands: `make create_environment`, `make build`, `make upload PORT=...`, `make monitor`,
-  `make test`, `make sim`, `make clean`, with `make help` as the index.
+  `make test`, `make sim`, `make clean`, with `make help` as the index; `make host-run` and
+  `make host-app-test` with `host_side == 'Yes'`.
 - Test tiers and the board's row from the capability matrix.
 - Board facts: boot line `[BOOT] <repo>`, baud, upload protocol, program button or bootloader.
 - Safety: ask before flashing a board that holds user data; back up EEPROM first on Arduino and
@@ -447,7 +517,8 @@ still produces the links it can. The links are relative; the project stays porta
 - Environment: `make create_environment`, or the lab installer when the component is absent.
 - Build and upload: the exact make targets, `PORT` and `BAUD`, and the board's reset sequence.
 - Non-interactive console: read until `[BOOT] <repo>`; never open an interactive monitor in an
-  automated step.
+  automated step. With `host_side == 'Yes'` one line adds `make host-run PORT=<port>`, which reads
+  the boot line non-interactively and prints one JSON line.
 - Command table: one line per task with the command.
 - Troubleshooting table: symptom, cause, action, covering no port, permission denied, bootloader
   timeout, wrong baud, and a simulator skip.
@@ -471,7 +542,7 @@ carries:
   the project copy of the installer
 - The simulator run and the emulator check for the platform
 - The LTspice run with the ltspice component: `make ltspice`, the JSON fields, the pass thresholds,
-  `ltspice/circuit.log`, and the direct `ltspice -b` and `ngspice -b` commands
+  `simulations/circuit.log`, and the direct `ltspice -b` and `ngspice -b` commands
 - A failure table: missing conda, a stopped stage, a missing tool, a skipped simulator or circuit test
 
 `references/toolchains.md` lists the stages and programs of the project's installer. It names tools,
@@ -496,7 +567,8 @@ Without the component, none of these lines render and `PORT` defaults to `/dev/t
 ### 7.1 Removal on a fresh copy
 
 `scripts/post_gen.py` runs from `_tasks` with the answers joined by commas. On `_copier_operation ==
-'copy'` it removes every path the answers did not select. On `update` it removes nothing.
+'copy'` it removes every path the answers did not select. On `update` it removes only the files the
+update wrote back (section 7.2).
 
 Component paths:
 
@@ -517,6 +589,9 @@ device-bridge  (no path)
 unselected and `env-installers` selected keeps `resources/envs/` and loses the three resources
 paths.
 
+`host/` is removed when `host_side` is not `Yes`. `_tasks` passes the answer as `--host-side`; on
+update the rule of section 7.2 applies to it, as it does to the component paths.
+
 Toolchain paths:
 
 - C/C++ branches remove `Cargo.toml`, `build.rs`, `memory.x`, `.cargo`, `rust-toolchain.toml`,
@@ -536,8 +611,10 @@ Toolchain paths:
 
 ### 7.2 Update keeps user files
 
-`update` runs the same script with `--copier-operation update`. It prints `would remove` for every
-unselected path and deletes nothing. The paths in `_skip_if_exists` are never overwritten:
+`update` runs the same script with `--copier-operation update`. Under every unselected path it
+removes only the untracked files that git does not ignore, then the directories left empty: copier
+refuses to update a destination with untracked files, so each such file was written by the update,
+and tracked and ignored files stay. The paths in `_skip_if_exists` are never overwritten:
 
 ```
 README.md
@@ -555,9 +632,11 @@ resources/envs/
 .gitignore
 pytest.ini
 test/
+host/
 notebooks/
 resources/
 references/
+simulations/
 data/
 docs/
 .github/
@@ -568,8 +647,8 @@ docs/
 Component trees and user documents are protected. Build files (`Makefile`, `platformio.ini`,
 `Cargo.toml`) stay template-owned so a build fix reaches an update; a user edit there can conflict
 and copier reports it (`ACC-TMPL-21`). The same rule applies to the new `references/`, `data/`,
-`.agents/`, `AGENTS.md` and `CLAUDE.md` entries, so an update never writes into a folder the user
-owns.
+`host/`, `.agents/`, `AGENTS.md` and `CLAUDE.md` entries, so an update never writes into a folder
+the user owns.
 
 ## 8. Criteria conflicts resolved
 

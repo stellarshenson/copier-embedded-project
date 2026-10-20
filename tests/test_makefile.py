@@ -317,8 +317,8 @@ def test_eeprom_targets_exist_for_arduino_and_bare_avr(answers):
         text = makefile(project)
         assert "\neeprom-backup:" in text
         assert "\neeprom-restore:" in text
-        assert "tools/eeprom_tool.py backup" in text
-        assert "tools/eeprom_tool.py restore" in text
+        assert "scripts/eeprom_tool.py backup" in text
+        assert "scripts/eeprom_tool.py restore" in text
         assert "resources/eeprom/" in text
         assert "eeprom-backup" not in run_help(project)
         assert "eeprom-restore" not in run_help(project)
@@ -335,7 +335,7 @@ def test_eeprom_targets_are_absent_outside_avr(answers):
     with bake(answers, components=DEFAULT) as project:
         text = makefile(project)
         assert "eeprom" not in text
-        assert "tools/eeprom_tool.py" not in text
+        assert "scripts/eeprom_tool.py" not in text
 
 
 @pytest.mark.parametrize("answers", MATRIX)
@@ -364,15 +364,15 @@ def test_bare_avr_arduino_isp_maps_to_arduinoisp():
     with bake(answers, components=DEFAULT) as project:
         text = makefile(project)
         assert "$(ENV_RUN) avrdude -c arduinoisp -p attiny85 -P $(PORT)" in text
-        assert "tools/eeprom_tool.py backup --port $(PORT) --mcu attiny85" in text
+        assert "scripts/eeprom_tool.py backup --port $(PORT) --mcu attiny85" in text
         assert "--programmer arduinoisp" in text
 
 
 def test_arduino_eeprom_targets_name_the_board_and_no_programmer():
     with bake({"platform": "arduino", "arduino_board": "nano"}, components=DEFAULT) as project:
         text = makefile(project)
-        assert "tools/eeprom_tool.py backup --board nanoatmega328 --port $(PORT)" in text
-        assert "tools/eeprom_tool.py restore --board nanoatmega328 --port $(PORT)" in text
+        assert "scripts/eeprom_tool.py backup --board nanoatmega328 --port $(PORT)" in text
+        assert "scripts/eeprom_tool.py restore --board nanoatmega328 --port $(PORT)" in text
         eeprom = text.split("\neeprom-backup:", 1)[1]
         assert "--programmer" not in eeprom
 
@@ -474,7 +474,7 @@ def fake_avrdude(project):
 
 def run_eeprom(project, environment, *arguments):
     result = subprocess.run(
-        [sys.executable, str(project / "tools" / "eeprom_tool.py"), *arguments],
+        [sys.executable, str(project / "scripts" / "eeprom_tool.py"), *arguments],
         cwd=project,
         capture_output=True,
         text=True,

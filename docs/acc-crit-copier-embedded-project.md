@@ -161,13 +161,17 @@ What a generated project holds and which parts are options
   - mechanism: 2026-10-17T22:27:47Z @kj post_gen runs git init -b main when the answer is Yes
   - log: 2026-10-17T22:27:47Z @kj added
   - log: 2026-10-17T23:49:47Z @kj closed
-- [x] `ACC-TMPL-21` **Updates keep user files** - HIGH; a copier update over an existing project changes no user-owned file: README, notebooks, resources, docs, .github, .claude and test are skipped and post_gen removes nothing on update
-  - evidence: tests/test_post_gen.py::test_update_removes_nothing and ::test_skip_list_protects_every_user_owned_path: make test 2026-10-18, 321 passed, 5 skipped
-  - test: tests/test_post_gen.py::test_update_removes_nothing
+- [x] `ACC-TMPL-21` **Updates keep user files** - HIGH; a copier update over an existing project changes no user-owned file: README, notebooks, resources, docs, .github, .claude and test are skipped; on update post_gen removes only untracked, not-ignored files under the paths the answers exclude, and tracked and ignored files stay
+  - evidence: tests/test_post_gen.py::test_update_removes_what_it_wrote_back_under_unselected_paths, ::test_update_keeps_tracked_and_ignored_files_under_unselected_paths and ::test_update_outside_git_removes_nothing passed: 3 passed, 2026-10-20
+  - test: tests/test_post_gen.py::test_update_removes_what_it_wrote_back_under_unselected_paths, ::test_update_keeps_tracked_and_ignored_files_under_unselected_paths and ::test_update_outside_git_removes_nothing
   - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-19T20:15:50Z @kj _skip_if_exists lists the user-owned paths; on update post_gen removes, under each path the answers exclude, only the files git ls-files --others --exclude-standard lists, then the directories left empty; copier refuses a dirty destination (copier/_main.py:1359, git status --porcelain), so those files came from the update
   - mechanism: 2026-10-17T22:27:47Z @kj _skip_if_exists lists the user-owned paths; post_gen reads the copier operation
   - log: 2026-10-17T22:27:47Z @kj added
   - log: 2026-10-17T23:49:47Z @kj closed
+  - log: 2026-10-19T20:15:50Z @kj amended text "a copier update over an existing project changes no user-owned file: README, notebooks, resources, docs, .github, .claude and test are skipped and post_gen removes nothing on update" -> "a copier update over an existing project changes no user-owned file: README, notebooks, resources, docs, .github, .claude and test are skipped; on update post_gen removes only untracked, not-ignored files under the paths the answers exclude, and tracked and ignored files stay"
+  - log: 2026-10-19T20:15:50Z @kj edited test "tests/test_post_gen.py::test_update_removes_nothing" -> "tests/test_post_gen.py::test_update_removes_what_it_wrote_back_under_unselected_paths, ::test_update_keeps_tracked_and_ignored_files_under_unselected_paths and ::test_update_outside_git_removes_nothing"
+  - log: 2026-10-19T22:54:05Z @kj edited evidence "tests/test_post_gen.py::test_update_removes_nothing and ::test_skip_list_protects_every_user_owned_path: make test 2026-10-18, 321 passed, 5 skipped" -> "tests/test_post_gen.py::test_update_removes_what_it_wrote_back_under_unselected_paths, ::test_update_keeps_tracked_and_ignored_files_under_unselected_paths and ::test_update_outside_git_removes_nothing passed: 3 passed, 2026-10-20"; reason: test_update_removes_nothing no longer exists; the three tests on the test line replace it
 - [x] `ACC-TMPL-22` **The Arduino board answer maps to the board id** - MEDIUM; the Arduino board answer sets the PlatformIO board: uno, nano by bootloader, megaatmega2560, leonardo, or the custom id given for other
   - evidence: tests/test_copy_matrix.py::test_derived_values and ::test_platformio_configuration: make test 2026-10-18, 321 passed, 5 skipped
   - test: tests/test_copy_matrix.py::test_platformio_configuration
@@ -344,13 +348,14 @@ What a generated project holds and which parts are options
   - mechanism: 2026-10-17T22:37:31Z @kj the matrix is rendered from the platform and board answers
   - log: 2026-10-17T22:37:31Z @kj added
   - log: 2026-10-18T01:34:32Z @kj closed
-- [x] `ACC-TMPL-46` **One unified project structure** - HIGH; every generated project shares one top-level structure - Makefile, src/, lib/, test/host, test/harness, test/functional, resources/, references/, docs/, tools/ - and the toolchain adds only documented small variations: the build file, the adapter inside src/, and where a toolchain requires it main/ or src/bin
+- [x] `ACC-TMPL-46` **One unified project structure** - HIGH; every generated project shares one top-level structure - Makefile, src/, lib/, test/host, test/harness, test/functional, resources/, references/, docs/, scripts/ - and the toolchain adds only the build file, the adapter inside src/, src/bin for Rust, and the main -> src link on ESP-IDF
   - evidence: tests/test_structure.py::test_one_top_level_structure_across_platforms and ::test_documented_layout_variation: make test 2026-10-18, 461 passed, 5 skipped
   - test: tests/test_copy_matrix.py: every platform renders the same top-level folders plus the documented variation only (to add)
   - test-tags: FUNCTIONAL
   - mechanism: 2026-10-17T22:41:56Z @kj copier.yml renders the same tree for every platform; the platform adapter and build file are the only per-toolchain differences
   - log: 2026-10-17T22:41:56Z @kj added
   - log: 2026-10-18T01:34:32Z @kj closed
+  - log: 2026-10-19T18:55:23Z @kj amended text "every generated project shares one top-level structure - Makefile, src/, lib/, test/host, test/harness, test/functional, resources/, references/, docs/, tools/ - and the toolchain adds only documented small variations: the build file, the adapter inside src/, and where a toolchain requires it main/ or src/bin" -> "every generated project shares one top-level structure - Makefile, src/, lib/, test/host, test/harness, test/functional, resources/, references/, docs/, scripts/ - and the toolchain adds only the build file, the adapter inside src/, src/bin for Rust, and the main -> src link on ESP-IDF"; reason: the helper-script folder is scripts/, and since the src master layout src/ is the only source root, main being a compatibility symlink on ESP-IDF
 - [x] `ACC-TMPL-47` **Arduino sketch link to the project root** - MEDIUM; the Arduino questionnaire offers an option to place the sketch at the project root as a symlink into src/; when chosen the root holds a <repo>.ino link to src/<repo>.ino, and when not the sketch stays in src/ only
   - evidence: tests/test_copy_matrix.py::test_sketch_link_answer_places_a_root_symlink and tests/test_post_gen.py::test_sketch_link_creates_the_root_symlink and ::test_sketch_link_off_leaves_the_sketch_in_src: make test 2026-10-18, 321 passed, 5 skipped
   - test: tests/test_post_gen.py: the sketch link option creates the root symlink and its absence leaves only src/ (to add)
@@ -373,20 +378,24 @@ What a generated project holds and which parts are options
   - mechanism: 2026-10-17T22:52:05Z @kj copier copy --trust --defaults with five answer sets; the generated Makefile drives build and sim
   - log: 2026-10-17T22:52:05Z @kj added
   - log: 2026-10-18T00:20:05Z @kj closed
-- [x] `ACC-TMPL-50` **LTspice circuit component is opt in** - MEDIUM; The components multiselect offers ltspice, off by default; when chosen it renders ltspice/ with a circuit.cir netlist of an ATtiny84 pin driving an op-amp, a README and a batch runner; when not chosen post_gen removes ltspice/
-  - evidence: tests/test_components.py::test_ltspice_component_renders_the_circuit passed; component on renders ltspice/ and the target, off removes both; make test 329 passed, 2026-10-18
+- [x] `ACC-TMPL-50` **LTspice circuit component is opt in** - MEDIUM; The components multiselect offers ltspice, off by default; when chosen it renders simulations/ with a circuit.cir netlist of an ATtiny84 pin driving an op-amp, a README and a batch runner; when not chosen post_gen removes simulations/
+  - evidence: tests/test_components.py::test_ltspice_component_renders_the_circuit passed: component on renders simulations/ and the ltspice target, off removes both; 1 passed, 2026-10-20
   - test: make test renders the component on and off and asserts the netlist and Makefile target
   - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-19T22:54:05Z @kj components choice renders template/simulations/; post_gen removes it when ltspice is unselected
   - mechanism: 2026-10-18T00:08:20Z @kj components choice renders template/ltspice; post_gen removes it when unselected
   - log: 2026-10-18T00:08:20Z @kj added
   - log: 2026-10-18T00:20:05Z @kj closed
+  - log: 2026-10-19T20:02:42Z @kj amended text "The components multiselect offers ltspice, off by default; when chosen it renders ltspice/ with a circuit.cir netlist of an ATtiny84 pin driving an op-amp, a README and a batch runner; when not chosen post_gen removes ltspice/" -> "The components multiselect offers ltspice, off by default; when chosen it renders simulations/ with a circuit.cir netlist of an ATtiny84 pin driving an op-amp, a README and a batch runner; when not chosen post_gen removes simulations/"; reason: the generated circuit-simulation folder is simulations/; the ltspice component keeps its name
+  - log: 2026-10-19T22:54:05Z @kj edited evidence "tests/test_components.py::test_ltspice_component_renders_the_circuit passed; component on renders ltspice/ and the target, off removes both; make test 329 passed, 2026-10-18" -> "tests/test_components.py::test_ltspice_component_renders_the_circuit passed: component on renders simulations/ and the ltspice target, off removes both; 1 passed, 2026-10-20"; reason: the generated circuit-simulation folder is simulations/
 - [x] `ACC-TMPL-51` **ATtiny84 op-amp circuit simulates** - HIGH; A functional test runs circuit.cir with LTspice when present or ngspice otherwise and asserts the op-amp output follows the ATtiny84 pulse; without a simulator it skips with the reason
   - evidence: tests/test_toolchain.py::test_ltspice_circuit_simulates passed under ngspice in firmware-avr; measured vhigh 5 V and vlow 0 V; 2026-10-18
-  - test: pytest ltspice/test_circuit.py in a rendered project with the component selected
+  - test: pytest simulations/test_circuit.py in a rendered project with the component selected
   - test-tags: FUNCTIONAL
   - mechanism: 2026-10-18T00:08:20Z @kj run.py picks LTspice or ngspice, runs the pinned netlist, parses the measured node voltage
   - log: 2026-10-18T00:08:20Z @kj added
   - log: 2026-10-18T00:20:05Z @kj closed
+  - log: 2026-10-19T20:02:42Z @kj edited test "pytest ltspice/test_circuit.py in a rendered project with the component selected" -> "pytest simulations/test_circuit.py in a rendered project with the component selected"; reason: the generated circuit-simulation folder is simulations/
 - [x] `ACC-TMPL-52` **CI builds and publishes firmware artifacts** - HIGH; with the ci component, every push and pull request installs the conda environment, runs make build and make test, collects the platform firmware files into dist/, uploads them as the firmware artifact, and caches .conda/envs keyed on the installer files
   - evidence: tests/test_ci.py::test_ci_builds_tests_and_uploads and make test 2026-10-18: 482 passed, 5 skipped
   - test: render each platform with ci and env-installers; the workflow runs make build and make test, uploads dist/* and caches .conda/envs
@@ -415,4 +424,70 @@ What a generated project holds and which parts are options
   - mechanism: 2026-10-18T14:25:26Z @kj .github/workflows/test.yml at the repository root runs the fast suite and lint on Python 3.14 with uv, and a second job installs firmware-avr and runs make test-toolchain
   - log: 2026-10-18T14:25:26Z @kj added
   - log: 2026-10-18T14:45:08Z @kj closed
+- [x] `ACC-TMPL-56-DEVREF-README` **References carry the device reference format** - MEDIUM; a project rendered with the references component has references/devices/README.md that names the uniform section format of a device reference and the file naming references/devices/<device>.md, and references/README.md lists devices/
+  - evidence: 2026-10-19 pytest tests/test_components.py::test_acc_tmpl_56_devref_readme_names_the_format_and_the_file_naming passed (56 to 58: 3 passed), make lint exit 0; mutation: the devices/ line removed from template/references/README.md made it fail
+  - test: tests/test_components.py: render with references, assert references/devices/README.md names the sections and references/devices/<device>.md, and references/README.md lists devices/
+  - test-tags: UNIT
+  - log: 2026-10-19T17:01:34Z @kj added
+  - log: 2026-10-19T18:17:20Z @kj closed
+- [x] `ACC-TMPL-57-DEVREF-TURMO` **The TURMO reference is the worked example** - MEDIUM; a project rendered with the references component has references/devices/turmo-usb-monitor.md, rendered verbatim with no Jinja substitution inside its code blocks
+  - evidence: 2026-10-19 pytest tests/test_components.py::test_acc_tmpl_57_devref_turmo_renders_verbatim passed, rendered file equal byte for byte to the source; the template file cmp equal to the extension copy with 0 Jinja markers; mutation '{{ 1 + 1 }}' appended made it fail, file restored and cmp equal
+  - test: tests/test_components.py: render with references, compare references/devices/turmo-usb-monitor.md byte for byte with the template source
+  - test-tags: UNIT
+  - log: 2026-10-19T17:01:34Z @kj added
+  - log: 2026-10-19T18:17:20Z @kj closed
+- [x] `ACC-TMPL-58-DEVREF-ABSENT` **No device references without the references component** - MEDIUM; a project rendered without the references component has no references/devices/ and no turmo-usb-monitor.md
+  - evidence: 2026-10-19 pytest tests/test_components.py::test_acc_tmpl_58_devref_absent_without_references passed: a project rendered without the references component has no references/devices/ and no turmo-usb-monitor.md
+  - test: tests/test_components.py: render without references, assert references/ and references/devices/ are absent
+  - test-tags: UNIT
+  - log: 2026-10-19T17:01:34Z @kj added
+  - log: 2026-10-19T18:17:20Z @kj closed
+- [x] `ACC-TMPL-59-HOST-SIDE` **Questionnaire asks for the host side** - MEDIUM; host_side No/Yes, default No, is asked directly before components; No leaves no host/ path, no host target and no host text
+  - evidence: 2026-10-19 make test 512 passed, 6 skipped; tests/test_host.py::test_host_side_no_renders_no_host_package, tests/test_help_matrix.py::test_host_side_help[Yes] and [No], tests/test_copy_matrix.py::test_question_choices[host_side-expected16-No] and tests/test_post_gen.py::test_host_side_no_drops_the_host_package passed
+  - test: render No and Yes; No has no host/ and no host targets in make help; Yes has both
+  - test-tags: UNIT
+  - mechanism: 2026-10-19T18:16:07Z @kj host_side question before components; post_gen removes host/ on No; Jinja guards the Makefile, README, AGENTS and skill text
+  - log: 2026-10-19T18:16:07Z @kj added
+  - log: 2026-10-19T18:52:39Z @kj closed
+- [x] `ACC-TMPL-60-HOST-MODULE` **Questionnaire asks the host module name** - MEDIUM; with host_side Yes, host_module is asked with the default repo_name without hyphens plus _host; a value that is not a Python identifier is rejected; the module folder takes the answer
+  - evidence: 2026-10-19 make test 512 passed, 6 skipped; tests/test_host.py::test_host_module_default_is_the_repo_name_without_hyphens, ::test_host_module_answer_names_the_package, ::test_host_module_must_be_a_python_identifier[bad-name] and [1probe], and tests/test_copy_matrix.py::test_host_module_is_guarded_by_the_host_side_and_asked_before_components passed
+  - test: render weather-station with host_side Yes; default gives host/src/weatherstation_host, -d host_module=probe gives host/src/probe, -d host_module=bad-name fails
+  - test-tags: UNIT
+  - mechanism: 2026-10-19T18:16:07Z @kj host_module question with when host_side == Yes, a derived default and an isidentifier validator; the template folder host/src/{{ host_module }}/ renders the answer
+  - log: 2026-10-19T18:16:07Z @kj added
+  - log: 2026-10-19T18:52:39Z @kj closed
+- [x] `ACC-TMPL-61-HOST-SCAFFOLD` **Host package scaffold** - HIGH; host_side Yes renders host/pyproject.toml, host/src/<host_module>/ with __init__, __main__, serial_client and protocol, and host/tests; the rendered host tests pass
+  - evidence: 2026-10-19 make test 512 passed, 6 skipped; tests/test_host.py::test_host_side_yes_renders_the_package, ::test_rendered_host_tests_pass and ::test_host_package_stays_out_of_the_build_inputs over 8 platforms passed; make host-app-test in rendered AVR C weather-station and STM32 Rust rover: 10 passed each
+  - test: render repo_name weather-station with host_side Yes; host/src/weatherstation_host exists and pytest host/tests passes
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-10-19T18:16:08Z @kj Python src layout with setuptools under host/; other languages would place code directly in host/src/, not generated
+  - log: 2026-10-19T18:16:08Z @kj added
+  - log: 2026-10-19T18:52:39Z @kj closed
+- [x] `ACC-TMPL-62-HOST-TARGETS` **Host targets read the board and test the package** - HIGH; make host-run reads the boot line on PORT and prints one JSON line; make host-app-test runs host/tests; make test runs both test sets; make help lists both targets
+  - evidence: 2026-10-19 make test 512 passed, 6 skipped; tests/test_help_matrix.py::test_host_side_help[Yes] passed; tests/test_host.py::test_cli_reads_the_boot_line_from_a_pty passed with a pyserial interpreter (19 passed) and skips in make test; rendered weather-station: make host-run on a pty printed boot true, make test ran host tests (10 passed)
+  - test: render host_side Yes; make help lists host-run and host-app-test; make host-run against a pty that writes the boot line prints boot true
+  - test-tags: FUNCTIONAL
+  - mechanism: 2026-10-19T18:16:08Z @kj Makefile targets run python -m <host_module> and pytest host/tests through ENV_RUN with PYTHONPATH=host/src
+  - log: 2026-10-19T18:16:08Z @kj added
+  - log: 2026-10-19T18:52:39Z @kj closed
+- [x] `ACC-TMPL-63-HOST-CRC` **Host CRC matches the firmware core** - MEDIUM; protocol.crc8 returns the same value as core_crc8 for the same bytes
+  - evidence: 2026-10-19 make test 512 passed, 6 skipped; tests/test_host.py::test_protocol_crc8_mirrors_core_crc8 passed: lib/core/core.c built with cc, crc8 equal to core_crc8 for b'', b'123456789', the boot line and bytes 0..255
+  - test: compile lib/core/core.c on the host and compare with crc8 over fixed inputs
+  - test-tags: UNIT
+  - mechanism: 2026-10-19T18:16:08Z @kj protocol.crc8 mirrors core_crc8: same polynomial, initial value and bit order
+  - log: 2026-10-19T18:16:08Z @kj added
+  - log: 2026-10-19T18:52:39Z @kj closed
+- [x] `ACC-TMPL-64-SCRIPTS` **Helper scripts live in scripts/** - MEDIUM; every generated project has scripts/ with a README stating the non-interactive one-JSON-line contract and the build-hook exception; no generated file names tools/; the Makefile and platformio.ini call scripts/eeprom_tool.py and scripts/freertos.py
+  - evidence: tests/test_structure.py::test_helper_scripts_live_in_scripts (9 platform branches), tests/test_makefile.py::test_eeprom_targets_exist_for_arduino_and_bare_avr and tests/test_toolchain.py::test_stm32cube_layout: make test 2026-10-19, 521 passed, 6 skipped; make test-toolchain 9 passed; STM32Cube make build linked with pre:scripts/freertos.py
+  - test: render every platform; scripts/README.md exists, no tools/ path, no tools/ text in any rendered file
+  - test-tags: UNIT
+  - mechanism: 2026-10-19T18:55:29Z @kj template/scripts/ replaces template/tools/; the Makefile eeprom targets and the STM32Cube extra_scripts line point at scripts/
+  - log: 2026-10-19T18:55:29Z @kj added
+  - log: 2026-10-19T19:28:48Z @kj closed
+- [x] `ACC-TMPL-65-SIMS` **Circuit simulations live in simulations/** - MEDIUM; a project with the ltspice component has simulations/ with circuit.cir, run.py, test_circuit.py and README.md; no rendered file names ltspice/ as a path; make ltspice and the toolchain skill run simulations/run.py
+  - evidence: tests/test_components.py::test_acc_tmpl_65_sims_circuit_simulations_live_in_simulations[arduino], [esp], [stm32] and ::test_acc_tmpl_65_sims_absent_without_the_ltspice_component passed; make test 2026-10-20: 546 passed, 6 skipped; make ltspice in a rendered AVR C project: 1 passed under ngspice
+  - test: render with and without the ltspice component, simulations/ present or absent, no ltspice/ path or text
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-19T20:02:38Z @kj added
+  - log: 2026-10-19T22:49:18Z @kj closed
 

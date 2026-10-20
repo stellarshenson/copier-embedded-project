@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -51,6 +52,9 @@ MATRIX = [
 
 def copier() -> str:
     """The copier executable, or a skip."""
+    beside = Path(sys.executable).parent / "copier"
+    if beside.exists():
+        return str(beside)
     found = shutil.which("copier")
     if not found:
         pytest.skip("copier is not installed")
@@ -62,7 +66,10 @@ def bake(answers: dict, components: list[str] | None = None):
     """Render the template into a temporary directory and yield the project path."""
     temp = Path(tempfile.mkdtemp(prefix="ce-test-"))
     destination = temp / answers.get("repo_name", "board")
-    command = [copier(), "copy", "--trust", "--defaults", str(ROOT), str(destination)]
+    # --vcs-ref HEAD renders the working tree; without it copier takes the latest tag.
+    command = [
+        copier(), "copy", "--trust", "--defaults", "--vcs-ref", "HEAD", str(ROOT), str(destination)
+    ]
     for key, value in answers.items():
         command.extend(["-d", f"{key}={value}"])
     if components is not None:

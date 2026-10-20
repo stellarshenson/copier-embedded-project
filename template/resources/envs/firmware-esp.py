@@ -154,6 +154,6 @@ install(
         "pio run --target upload --upload-port <serial device>    (in a PlatformIO project)",
         "esptool --port <serial device> write-flash 0x0 <firmware>.bin",
         "qemu-system-xtensa -machine esp32 -nographic -drive file=<flash image>,if=mtd,format=raw    (ESP-IDF image; the simulator tier uses it)",
-        "ngspice -b ltspice/circuit.cir    (the opt-in ltspice component runs the surrounding circuit)",
+        "ngspice -b simulations/circuit.cir    (the opt-in ltspice component runs the surrounding circuit)",
     ],
 )

@@ -7,8 +7,10 @@ principles. The generated README opens with the paragraph in section 7.
 
 Every generated project uses the same top-level structure.
 
-- `Makefile`, `src/`, `lib/`, `test/host/`, `test/harness/`, `test/functional/`, `resources/`, `references/`, `docs/` and `tools/`
+- `Makefile`, `src/`, `lib/`, `test/host/`, `test/harness/`, `test/functional/`, `resources/`, `references/`, `docs/` and `scripts/`
+- `scripts/` holds PC-side helper scripts: each takes no interactive input, prints one JSON line and exits non-zero with a reason on failure, so an agent can run it; the STM32Cube `scripts/freertos.py` is the one exception, a PlatformIO build hook
 - A component folder is present when its component is chosen and absent otherwise
+- `host/` is present when the `host_side` answer is `Yes`; it holds the PC-side package, and the firmware build never compiles it
 - A toolchain adds its build file and one adapter
 - Two variations, listed in the design: `src/bin/` for Cargo and the sketch name for Arduino
 - `src/` is the one adapter root on every platform; for ESP-IDF a relative `main -> src` symlink supplies the component name the build expects, and it is not a second source root
@@ -16,7 +18,7 @@ Every generated project uses the same top-level structure.
 
 ## 2. Components opt in
 
-Every optional tree is a component chosen in the questionnaire: `notebooks`, `resources`, `references`, `data`, `simulator`, `docs`, `ci`, `agents`, `env-installers`, `ltspice` and `device-bridge`.
+Every optional tree except `host/` is a component chosen in the questionnaire: `notebooks`, `resources`, `references`, `data`, `simulator`, `docs`, `ci`, `agents`, `env-installers`, `ltspice` and `device-bridge`.
 
 - An unselected component leaves no folder and no target
 - A project with only the always-on parts still builds, uploads, monitors and runs its host tests

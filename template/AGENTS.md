@@ -46,10 +46,16 @@
 {% if 'references' in components -%}
 - `references/` - datasheets and notes
 {% endif -%}
+{% if 'ltspice' in components -%}
+- `simulations/` - the circuit netlist, its runner and its test; `make ltspice` runs them under LTspice or ngspice
+{% endif -%}
 {% if 'docs' in components -%}
 - `docs/` - design, acceptance criteria and defects
 {% endif -%}
-- `tools/` - non-interactive project tools{% if eeprom %}, including `tools/eeprom_tool.py`{% endif %}
+- `scripts/` - helper scripts that run on the PC, take no interactive input, print one JSON line and exit non-zero with a reason on failure{% if eeprom %}, including `scripts/eeprom_tool.py`{% endif %}{% if platform == 'stm32' and stm32_toolchain == 'platformio' and stm32_framework == 'stm32cube' %}; `scripts/freertos.py` is the exception, a PlatformIO build hook run through `extra_scripts`{% endif %}
+{% if host_side == 'Yes' -%}
+- `host/` - the PC-side Python package `host/src/{{ host_module }}/` and its tests in `host/tests/`; it talks to the board over serial and is never built for the board
+{% endif -%}
 - `Makefile` - the entry point for every development command
 {% if 'agents' in components -%}
 - `.agents/skills/{{ repo_name }}-device` - board facts, upload, console and safety
@@ -67,7 +73,7 @@
 - `make build` - build the firmware
 - `make upload PORT=/dev/ttyUSB0` - flash the board
 - `make monitor PORT=/dev/ttyUSB0 BAUD={{ serial_baud }}` - open the serial console
-- `make test` - run the host unit tests{% if simulator %} and the simulator tests{% endif %}
+- `make test` - run the host unit tests{% if host_side == 'Yes' %} and the host application tests{% endif %}{% if simulator %} and the simulator tests{% endif %}
 
 {% if simulator -%}
 - `make sim` - run the functional tests against the emulator
@@ -75,6 +81,10 @@
 {% if eeprom -%}
 - `make eeprom-backup` - save the EEPROM under `resources/eeprom/` and print one JSON line
 - `make eeprom-restore` - write a backup and verify the read-back
+{% endif -%}
+{% if host_side == 'Yes' -%}
+- `make host-run PORT=/dev/ttyUSB0` - read the boot line with the host application and print one JSON line
+- `make host-app-test` - run the host application tests in `host/tests/`
 {% endif -%}
 - `make clean` - remove build output and caches
 - `make increment_version` - increment the patch version in `VERSION`

@@ -1,4 +1,4 @@
-"""post_gen removes files on a fresh copy and leaves them on an update."""
+"""post_gen removes files on a fresh copy and, on an update, only the files the update wrote."""
 
 from __future__ import annotations
 
@@ -22,7 +22,8 @@ ALL_COMPONENTS = (
     "notebooks,resources,references,data,simulator,docs,ci,agents,env-installers,device-bridge"
 )
 
-# The exact update skip list of docs/template-design.md section 7.2.
+# Paths the update skip list must contain; the test checks that _skip_if_exists
+# includes them, not that it equals them.
 REQUIRED_SKIP = {
     "README.md",
     "CHANGELOG.md",
@@ -39,6 +40,7 @@ REQUIRED_SKIP = {
     ".gitignore",
     "pytest.ini",
     "test/",
+    "host/",
     "notebooks/",
     "resources/",
     "references/",
@@ -100,6 +102,25 @@ def tree_state(directory: Path) -> dict[str, tuple]:
     return state
 
 
+def project_state(directory: Path) -> dict[str, tuple]:
+    """tree_state without the git internals."""
+    return {
+        relative: entry
+        for relative, entry in tree_state(directory).items()
+        if relative.split("/")[0] != ".git"
+    }
+
+
+def commit_project(directory: Path) -> None:
+    """Commit the directory the way a user keeps a generated project in git."""
+    for arguments in (
+        ["init", "-b", "main"],
+        ["add", "-A"],
+        ["-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-m", "copy"],
+    ):
+        subprocess.run(["git", *arguments], cwd=directory, check=True, capture_output=True)
+
+
 def make_tree(directory: Path) -> None:
     """Every path the unified template renders, whatever the answers."""
     for relative in (
@@ -124,6 +145,12 @@ def make_tree(directory: Path) -> None:
         "test/harness/qemu.py",
         "test/functional/test_boot.py",
         "pytest.ini",
+        "host/pyproject.toml",
+        "host/src/board_host/__main__.py",
+        "host/tests/test_protocol.py",
+        "scripts/README.md",
+        "scripts/eeprom_tool.py",
+        "scripts/freertos.py",
         "notebooks/README.md",
         "resources/README.md",
         "resources/graphics/README.md",
@@ -202,7 +229,60 @@ def test_env_installers_survive_without_the_resources_component():
         assert not (directory / "resources/graphics").exists()
 
 
-def test_update_removes_nothing():
+def test_update_removes_what_it_wrote_back_under_unselected_paths():
+    """DEF-POST-3-UPDATE-WRITEBACK: an update ends with the tree a fresh copy left."""
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        write(directory, "resources/envs/firmware-esp.py")
+        write(directory, "resources/envs/firmware-stm32.py")
+        run_post_gen(directory, components="notebooks,env-installers")
+        commit_project(directory)
+        copied = project_state(directory)
+
+        # The update renders every template path into the project again.
+        make_tree(directory)
+        write(directory, "resources/envs/firmware-esp.py")
+        write(directory, "resources/envs/firmware-stm32.py")
+        run_post_gen(directory, operation="update", components="notebooks,env-installers")
+
+        assert project_state(directory) == copied
+        for relative in (".github", "docs", "data", "host", "Cargo.toml", "test/host/core.rs"):
+            assert not (directory / relative).exists(), relative
+
+
+def test_update_keeps_tracked_and_ignored_files_under_unselected_paths():
+    """ACC-TMPL-21: a user file the update did not write survives it."""
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        answers = {
+            "platform": "stm32",
+            "components": "",
+            "stm32_toolchain": "rust",
+            "open_source_license": "No license file",
+            "git_init": "Yes",
+        }
+        make_tree(directory)
+        run_post_gen(directory, **answers)
+        write(directory, "LICENSE", "user license")
+        write(directory, ".github/workflows/user.yml", "user workflow")
+        write(directory, ".gitignore", "data/local/\n")
+        write(directory, "data/local/capture.bin", "ignored capture")
+        commit_project(directory)
+
+        make_tree(directory)
+        write(directory, "LICENSE", "user license")
+        run_post_gen(directory, operation="update", **answers)
+
+        assert (directory / "LICENSE").read_text() == "user license"
+        assert (directory / ".github/workflows/user.yml").read_text() == "user workflow"
+        assert (directory / "data/local/capture.bin").read_text() == "ignored capture"
+        assert not (directory / ".github/workflows/build.yml").exists()
+        assert not (directory / "data/README.md").exists()
+        assert not (directory / "platformio.ini").exists()
+
+
+def test_update_outside_git_removes_nothing():
     with tempfile.TemporaryDirectory() as temp:
         directory = Path(temp)
         make_tree(directory)
@@ -219,7 +299,7 @@ def test_update_removes_nothing():
         )
 
         assert tree_state(directory) == before
-        assert "would remove" in output
+        assert "is not a git work tree; the update removes nothing" in output
         assert not (directory / ".git").exists()
 
 
@@ -388,6 +468,54 @@ def test_stm32_arduino_drops_freertos_config():
         assert not (directory / "src/FreeRTOSConfig.h").exists()
 
 
+def test_stm32_rust_ready_line_names_no_framework():
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        output = run_post_gen(
+            directory,
+            platform="stm32",
+            stm32_toolchain="rust",
+            stm32_framework="stm32cube",
+        )
+
+        assert output.splitlines()[-1] == "post_gen: board ready on stm32"
+
+
+@pytest.mark.parametrize(
+    "platform, answers, scripts",
+    [
+        ("arduino", {}, {"README.md", "eeprom_tool.py"}),
+        ("avr", {"avr_language": "c"}, {"README.md", "eeprom_tool.py"}),
+        ("avr", {"avr_language": "cpp"}, {"README.md", "eeprom_tool.py"}),
+        ("avr", {"avr_language": "rust"}, {"README.md", "eeprom_tool.py"}),
+        ("esp", {"esp_framework": "espidf"}, {"README.md"}),
+        ("esp", {"esp_framework": "arduino"}, {"README.md"}),
+        ("esp", {"esp_framework": "esp8266-rtos-sdk"}, {"README.md"}),
+        ("stm32", {"stm32_toolchain": "rust"}, {"README.md"}),
+        (
+            "stm32",
+            {"stm32_toolchain": "platformio", "stm32_framework": "stm32cube"},
+            {"README.md", "freertos.py"},
+        ),
+        (
+            "stm32",
+            {"stm32_toolchain": "platformio", "stm32_framework": "arduino"},
+            {"README.md"},
+        ),
+    ],
+)
+def test_scripts_follow_the_platform_branch(platform, answers, scripts):
+    """DEF-POST-1-EEPROM-TOOL and DEF-POST-2-FREERTOS-RUST: no branch keeps a script it never runs."""
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        run_post_gen(directory, platform=platform, **answers)
+
+        assert {entry.name for entry in (directory / "scripts").iterdir()} == scripts
+        assert (directory / "src/FreeRTOSConfig.h").exists() == ("freertos.py" in scripts)
+
+
 def test_arduino_libraries_off_drops_the_vendor_tree():
     with tempfile.TemporaryDirectory() as temp:
         directory = Path(temp)
@@ -405,6 +533,44 @@ def test_arduino_libraries_on_keeps_the_vendor_tree():
         run_post_gen(directory, platform="arduino", arduino_libraries="Yes")
 
         assert (directory / "lib/vendor/README.md").is_file()
+
+
+def test_host_side_no_drops_the_host_package():
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        run_post_gen(directory, host_side="No")
+
+        assert not (directory / "host").exists()
+
+
+def test_host_side_yes_keeps_the_host_package():
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        run_post_gen(directory, host_side="Yes")
+
+        for relative in (
+            "host/pyproject.toml",
+            "host/src/board_host/__main__.py",
+            "host/tests/test_protocol.py",
+        ):
+            assert (directory / relative).is_file(), relative
+
+
+def test_update_on_host_side_no_removes_only_the_written_back_host_package():
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp)
+        make_tree(directory)
+        run_post_gen(directory, host_side="No")
+        write(directory, "host/notes.md", "user notes")
+        commit_project(directory)
+
+        make_tree(directory)
+        run_post_gen(directory, operation="update", host_side="No")
+
+        assert (directory / "host/notes.md").read_text() == "user notes"
+        assert sorted(entry.name for entry in (directory / "host").iterdir()) == ["notes.md"]
 
 
 def test_sketch_link_creates_the_root_symlink():

@@ -1,5 +1,42 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Opt-in host side: the `host_side` and `host_module` questions add `host/src/<module>`, a PC-side
+  Python package, with `make host-run` and `make host-app-test`
+
+### Changed
+
+- The generated project's helper-script folder is `scripts/` (was `tools/`), with the same contract
+- `copier update` from 1.0.13 moves `tools/` to `scripts/` and `ltspice/` to `simulations/` with
+  `git mv`, your own files and your edits included, and points the Makefile and `platformio.ini` at
+  the new folders. When the project has both `tools/` and its own `scripts/`, or both `ltspice/` and
+  its own `simulations/`, the update stops with a message before it changes any file; rename your
+  `scripts/` or `simulations/`, commit, and update again. An edited template file can come out as a
+  merge conflict that holds your edit:
+  in testing an edited `eeprom_tool.py` and `freertos.py` did, an edited `circuit.cir` did not.
+  `scripts/README.md` keeps its 1.0.13 text, and an ESP or STM32 project keeps the moved
+  `scripts/eeprom_tool.py`. `README.md`, `AGENTS.md`, the toolchain skill under `.agents/skills/`
+  and the installers in `resources/envs/` are not overwritten and still name `tools/` or `ltspice/`
+- The circuit simulation folder is `simulations/` (was `ltspice/`); the `ltspice` component and
+  `make ltspice` keep their names
+
+### Fixed
+
+- ESP and STM32 projects no longer carry `scripts/eeprom_tool.py`, which only the Arduino and bare
+  AVR Makefile runs
+- AVR Rust and STM32 Rust projects no longer carry `scripts/freertos.py`, the STM32Cube build hook
+- `copier update` no longer writes back the folders and files the answers exclude, such as
+  `.github/`, `docs/` or `host/`: it removes them again when git lists them as untracked and not
+  ignored, so files you committed or ignore stay
+- The ready message of an STM32 Rust project no longer names the `stm32cube` framework
+- The CI of an AVR Rust project collects `target/<target>/release/<repo>.elf`, the file cargo
+  writes; v1.0.13 shipped the path without `.elf`, so its build job and tag release fail, and because
+  `.github/` is in `_skip_if_exists` an existing project edits that line of its `build.yml` by hand
+- The template repository CI finds copier in `.venv`, so its bake tests run instead of skipping
+
 ## [1.0.13] - 2026-10-18
 
 ### Added

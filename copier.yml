@@ -234,6 +234,33 @@ environment_scope:
   default: global
   help: "Install the conda environment in the conda root (global) or under the project (local)"
 
+# Copier renders a default only from the answers above it, and the default of host_module reads
+# repo_name, so the two names are derived here, before the host-side questions.
+project_name:
+  type: str
+  default: "{{ _copier_conf.dst_path.name }}"
+  ask: false
+
+repo_name:
+  type: str
+  default: "{{ project_name.lower().replace(' ', '-') }}"
+  ask: false
+
+host_side:
+  type: str
+  choices:
+    - "No"
+    - "Yes"
+  default: "No"
+  help: "Generate host-side code: a Python package under host/ that talks to the board over serial"
+
+host_module:
+  type: str
+  default: "{{ repo_name.replace('-', '') }}_host"
+  when: "{{ host_side == 'Yes' }}"
+  help: "Python module name of the host-side code"
+  validator: "{% if not host_module.isidentifier() %}host_module must be a Python identifier, for example weatherstation_host{% endif %}"
+
 # ---------------------------------------------------------------------------
 # Optional folders and files, chosen together
 
@@ -263,16 +290,6 @@ components:
 
 # ---------------------------------------------------------------------------
 # Derived answers, never asked
-
-project_name:
-  type: str
-  default: "{{ _copier_conf.dst_path.name }}"
-  ask: false
-
-repo_name:
-  type: str
-  default: "{{ project_name.lower().replace(' ', '-') }}"
-  ask: false
 
 # The author is split into the name and the email address: both forms `Name <email>` and
 # `Name email`, in any position, give the same pair. The full name keeps every token that is
@@ -451,10 +468,11 @@ _skip_if_exists:
   - .gitignore
   - pytest.ini
   - test/
+  - host/
   - notebooks/
   - resources/
   - references/
-  - ltspice/
+  - simulations/
   - data/
   - docs/
   - .github/
@@ -476,4 +494,19 @@ _tasks:
     --arduino-sketch-link "{{ arduino_sketch_link | default('No') }}"
     --open-source-license "{{ open_source_license }}"
     --git-init "{{ git_init }}"
+    --host-side "{{ host_side }}"
     --copier-operation "{{ _copier_operation }}"
+
+# 1.0.14 renders scripts/ and simulations/ in place of tools/ and ltspice/. Copier deletes every
+# file the old version rendered into a folder the new version no longer renders, edited or not, so
+# the update from an older version first moves both folders with git mv. A string command runs
+# through the shell; the migration runs only when the old version is below 1.0.14 and the new one
+# is 1.0.14 or later.
+_migrations:
+  - version: "1.0.14"
+    when: "{{ _stage == 'before' }}"
+    command: >-
+      if { [ -d ltspice ] && [ -e simulations ]; } || { [ -d tools ] && [ -e scripts ]; }; then
+      echo "copier update to 1.0.14 moves tools/ to scripts/ and ltspice/ to simulations/; rename your own scripts/ or simulations/ folder, commit, and run the update again" >&2; exit 1; fi;
+      if [ -d ltspice ]; then git mv ltspice simulations; fi;
+      if [ -d tools ]; then git mv tools scripts; fi

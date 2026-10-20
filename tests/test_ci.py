@@ -42,7 +42,7 @@ CASES = [
     ),
     pytest.param(
         {"platform": "avr", "avr_language": "rust", "avr_mcu": "atmega328p"},
-        "target/avr-none/release/board",
+        "target/avr-none/release/board.elf",
         id="avr-rust",
     ),
     pytest.param(

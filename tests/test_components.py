@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 
-from helpers import bake
+import pytest
+from helpers import ROOT, bake
 
 DEFAULT_COMPONENTS = [
     "notebooks",
@@ -27,13 +29,13 @@ ALL_COMPONENTS = DEFAULT_COMPONENTS + [
 def test_ltspice_component_renders_the_circuit():
     with bake({"platform": "arduino"}, components=DEFAULT_COMPONENTS + ["ltspice"]) as path:
         for present in (
-            "ltspice/README.md",
-            "ltspice/circuit.cir",
-            "ltspice/run.py",
-            "ltspice/test_circuit.py",
+            "simulations/README.md",
+            "simulations/circuit.cir",
+            "simulations/run.py",
+            "simulations/test_circuit.py",
         ):
             assert (path / present).is_file(), present
-        netlist = (path / "ltspice" / "circuit.cir").read_text()
+        netlist = (path / "simulations" / "circuit.cir").read_text()
         assert "PULSE(0 5 0 1u 1u 500u 1000u)" in netlist
         assert ".meas tran vhigh" in netlist
         makefile = (path / "Makefile").read_text()
@@ -42,7 +44,7 @@ def test_ltspice_component_renders_the_circuit():
         assert "ltspice" in test_line
 
     with bake({"platform": "arduino"}) as path:
-        assert not (path / "ltspice").exists()
+        assert not (path / "simulations").exists()
         assert "\nltspice:" not in (path / "Makefile").read_text()
 
 
@@ -251,3 +253,95 @@ def test_device_bridge_component():
         assert "jupyterlab-device" not in readme
         makefile = (path / "Makefile").read_text()
         assert "PORT ?= /dev/ttyUSB0" in makefile
+
+
+DEVICE_SECTIONS = [
+    "Identity",
+    "Connection",
+    "Device protocol",
+    "Device code",
+    "Host protocol",
+    "Host code",
+    "Traps and recovery",
+    "Observed and untested",
+    "Sources",
+]
+
+TURMO_SOURCE = ROOT / "template/references/devices/turmo-usb-monitor.md"
+
+
+def test_acc_tmpl_56_devref_readme_names_the_format_and_the_file_naming():
+    """ACC-TMPL-56-DEVREF-README: devices/README.md names the nine sections in order."""
+    with bake({"platform": "arduino"}) as path:
+        readme = (path / "references/devices/README.md").read_text()
+        assert "references/devices/<device>.md" in readme
+        assert "references/datasheets/" in readme
+        assert "jupyterlab-device-bridge-extension" in readme
+        positions = [readme.find(f"| {section} |") for section in DEVICE_SECTIONS]
+        assert -1 not in positions, positions
+        assert positions == sorted(positions), positions
+        listing = (path / "references/README.md").read_text()
+        assert "- `devices/` - " in listing
+
+
+def test_acc_tmpl_57_devref_turmo_renders_verbatim():
+    """ACC-TMPL-57-DEVREF-TURMO: the rendered TURMO reference equals the template source."""
+    source = TURMO_SOURCE.read_bytes()
+    assert source.count(b"```") >= 6
+    with bake({"platform": "arduino"}) as path:
+        rendered = (path / "references/devices/turmo-usb-monitor.md").read_bytes()
+        assert rendered == source
+        headings = [
+            line.split(". ", 1)[1]
+            for line in rendered.decode().splitlines()
+            if re.match(r"## \d+\. ", line)
+        ]
+        assert headings == DEVICE_SECTIONS
+
+
+def test_acc_tmpl_58_devref_absent_without_references():
+    """ACC-TMPL-58-DEVREF-ABSENT: no device reference without the references component."""
+    without = [item for item in DEFAULT_COMPONENTS if item != "references"]
+    with bake({"platform": "arduino"}, components=without) as path:
+        assert not (path / "references").exists()
+        assert not any(path.rglob("turmo-usb-monitor.md"))
+
+
+SIMULATIONS = {"README.md", "circuit.cir", "run.py", "test_circuit.py"}
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        pytest.param({"platform": "arduino"}, id="arduino"),
+        pytest.param({"platform": "esp"}, id="esp"),
+        pytest.param({"platform": "stm32"}, id="stm32"),
+    ],
+)
+def test_acc_tmpl_65_sims_circuit_simulations_live_in_simulations(answers):
+    """ACC-TMPL-65-SIMS: the ltspice component renders simulations/; no file names ltspice/."""
+    with bake(answers, components=ALL_COMPONENTS) as path:
+        assert {entry.name for entry in (path / "simulations").iterdir()} == SIMULATIONS
+        assert "pytest simulations -q" in (path / "Makefile").read_text()
+        skill = (path / ".agents/skills/board-toolchain/SKILL.md").read_text()
+        assert "python simulations/run.py" in skill
+        named_ltspice = []
+        mentions = []
+        for entry in path.rglob("*"):
+            relative = entry.relative_to(path)
+            if ".git" in relative.parts:
+                continue
+            if entry.name == "ltspice":
+                named_ltspice.append(str(relative))
+            if entry.is_file() and "ltspice/" in entry.read_text(errors="ignore"):
+                mentions.append(str(relative))
+        assert named_ltspice == []
+        assert mentions == []
+
+
+def test_acc_tmpl_65_sims_absent_without_the_ltspice_component():
+    """ACC-TMPL-65-SIMS: without the ltspice component neither simulations/ nor ltspice/ exists."""
+    without = [item for item in ALL_COMPONENTS if item != "ltspice"]
+    with bake({"platform": "arduino"}, components=without) as path:
+        assert not (path / "simulations").exists()
+        assert not (path / "ltspice").exists()

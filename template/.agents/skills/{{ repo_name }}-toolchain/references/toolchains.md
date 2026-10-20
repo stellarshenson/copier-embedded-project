@@ -12,7 +12,7 @@ are pins at the top of `resources/envs/{{ installer_name }}.py`; read them there
 | avr-gcc | downloads.arduino.cc | `avr-gcc`, `avr-objcopy`, `avr-size` |
 | avrdude | downloads.arduino.cc | `avrdude` |
 | PlatformIO with atmelavr | registry.platformio.org | `pio`, the AVR toolchain, the Arduino AVR core, `tool-simavr`, `pytest` |
-| ngspice | conda-forge | `ngspice` for `ltspice/circuit.cir` |
+| ngspice | conda-forge | `ngspice` for `simulations/circuit.cir` |
 
 Checks: `cargo --version`, `avr-gcc --version`, `avrdude -v`, `pio --version`, `pytest --version`,
 `ngspice --version`.
@@ -27,7 +27,7 @@ Checks: `cargo --version`, `avr-gcc --version`, `avrdude -v`, `pio --version`, `
 | ESP8266 RTOS SDK | registry.platformio.org | FreeRTOS for the ESP8266 on the same platform |
 | ESP-IDF | registry.platformio.org | the ESP32 toolchain, ESP-IDF and FreeRTOS |
 | Espressif QEMU | github.com | `qemu-system-xtensa` with the `esp32` machine |
-| ngspice | conda-forge | `ngspice` for `ltspice/circuit.cir` |
+| ngspice | conda-forge | `ngspice` for `simulations/circuit.cir` |
 
 Checks: `cargo --version`, `cargo +esp --version`, `xtensa-esp32-elf-gcc --version`,
 `espflash --version`, `esptool version`, `pio --version`, `qemu-system-xtensa --version`,
@@ -41,7 +41,7 @@ Checks: `cargo --version`, `cargo +esp --version`, `xtensa-esp32-elf-gcc --versi
 | PlatformIO with ststm32 | registry.platformio.org | `pio`, the STM32 toolchain, STM32Cube and the Arduino core |
 | stm32flash | sourceforge.net | `stm32flash` |
 | QEMU | download.qemu.org | `qemu-system-arm` with the `netduinoplus2` machine, built from source |
-| ngspice | conda-forge | `ngspice` for `ltspice/circuit.cir` |
+| ngspice | conda-forge | `ngspice` for `simulations/circuit.cir` |
 
 Checks: `cargo --version`, `rustc --version`, `rust-analyzer --version`, `cargo objcopy --version`,
 `pio --version`, `stm32flash` (it has no version option), `qemu-system-arm --version`,

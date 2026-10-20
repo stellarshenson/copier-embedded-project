@@ -13,4 +13,5 @@ at 1 kHz, the shape the starter firmware produces, and the analog circuit is sim
 The input divider R1/R2 scales 5 V to 2.5 V; the feedback R3/R4 sets gain 2, so the output swings
 0 V to 5 V. The measurement points are 0.25 ms (input high) and 0.75 ms (input low).
 
-The component is opt-in. A project without it carries no `ltspice/` folder and no `ltspice` target.
+The component is opt-in. A project without it carries no `simulations/` folder and no `ltspice`
+target.

@@ -1,0 +1,1 @@
+- 2026-10-19T19:58:11Z @kj acc-crit-copier-embedded-project.md d9220060 sha256:fe1f3db473c61d8eb18c126ab3defc4cad2f35c706e67d30516a4f3e5a8ce159: replace U+2192 with -> on ACC-TMPL-46; pm-tools forbids the glyph and amend copies it into the log

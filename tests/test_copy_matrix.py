@@ -116,6 +116,7 @@ def test_components_is_the_last_visible_question():
         ("open_source_license", ["Apache-2.0", "MIT", "No license file"], "MIT"),
         ("git_init", ["Yes", "No"], "Yes"),
         ("environment_scope", ["global", "local"], "global"),
+        ("host_side", ["No", "Yes"], "No"),
     ],
 )
 def test_question_choices(name, expected, default):
@@ -163,6 +164,16 @@ def test_dynamic_defaults_follow_the_chip_and_board():
 )
 def test_platform_questions_are_guarded(name, platform):
     assert f"platform == '{platform}'" in CONFIG[name]["when"]
+
+
+def test_host_module_is_guarded_by_the_host_side_and_asked_before_components():
+    assert CONFIG["host_module"]["when"] == "{{ host_side == 'Yes' }}"
+    visible = [
+        name
+        for name, question in CONFIG.items()
+        if not name.startswith("_") and not hidden(question)
+    ]
+    assert visible[-3:] == ["host_side", "host_module", "components"]
 
 
 def test_derived_answers_are_never_asked():
@@ -813,3 +824,14 @@ def test_copier_answers_omit_hidden_and_skipped_answers():
             assert hidden not in text, hidden
         for skipped in ("arduino_board:", "esp_chip:", "stm32_toolchain:"):
             assert skipped not in text, skipped
+
+
+@pytest.mark.parametrize("host_side", ["No", "Yes"])
+def test_copier_answers_record_host_module_only_with_the_host_side(host_side):
+    with bake({"platform": "arduino", "host_side": host_side}) as path:
+        answers = yaml.safe_load((path / ".copier-answers.yml").read_text())
+        assert answers["host_side"] == host_side
+        if host_side == "Yes":
+            assert answers["host_module"] == "board_host"
+        else:
+            assert "host_module" not in answers

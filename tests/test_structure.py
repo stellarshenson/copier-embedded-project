@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -58,7 +59,7 @@ TREE_FILES = [
     ".gitignore",
     ".copier-answers.yml",
 ]
-TREE_DIRS = ["lib", "test/host", "tools"]
+TREE_DIRS = ["lib", "test/host", "scripts"]
 
 # The roots every platform shares, whatever its toolchain (ACC-TMPL-46).
 UNIFIED_ROOTS = [
@@ -70,7 +71,7 @@ UNIFIED_ROOTS = [
     "resources",
     "references",
     "docs",
-    "tools",
+    "scripts",
 ]
 
 # The only top-level names a toolchain may add or swap, from the per-toolchain
@@ -151,7 +152,7 @@ def test_root_agents_files(answers):
         text = agents.read_text()
         assert "## Structure" in text
         assert "## Commands" in text
-        assert "- `tools/`" in text
+        assert "- `scripts/`" in text
         for target in ("make help", "make build", "make upload", "make monitor", "make test"):
             assert target in text, target
         assert (path / "CLAUDE.md").read_text().splitlines() == ["@AGENTS.md"]
@@ -327,3 +328,58 @@ def test_one_top_level_structure_across_platforms():
     for name, tree in trees.items():
         undocumented = (tree ^ base) - LAYOUT_VARIATIONS
         assert not undocumented, f"{name}: undocumented top-level entries {sorted(undocumented)}"
+
+
+# A vendor download URL may carry tools/ inside its own path; no other rendered text may.
+URL = re.compile(r"https?://\S+")
+
+
+@pytest.mark.parametrize("answers", BRANCH_PARAMS)
+def test_helper_scripts_live_in_scripts(answers):
+    """ACC-TMPL-64-SCRIPTS: scripts/ states the contract; no rendered path or text names tools/."""
+    with bake({**answers, "host_side": "Yes"}, components=ALL_COMPONENTS) as path:
+        readme = (path / "scripts/README.md").read_text()
+        assert "one JSON line" in readme
+        assert "extra_scripts" in readme
+
+        named_tools = []
+        mentions = []
+        for entry in path.rglob("*"):
+            relative = entry.relative_to(path)
+            if ".git" in relative.parts:
+                continue
+            if entry.name == "tools":
+                named_tools.append(str(relative))
+            if not entry.is_file():
+                continue
+            try:
+                text = entry.read_text()
+            except UnicodeDecodeError:
+                continue
+            if "tools/" in URL.sub("", text):
+                mentions.append(str(relative))
+        assert named_tools == []
+        assert mentions == []
+
+
+@pytest.mark.parametrize("answers", BRANCH_PARAMS)
+def test_scripts_hold_only_the_scripts_the_branch_runs(answers):
+    """DEF-POST-1-EEPROM-TOOL, DEF-POST-2-FREERTOS-RUST: each script ships where it runs."""
+    stm32cube = answers.get("stm32_framework") == "stm32cube"
+    expected = {"README.md"}
+    if answers["platform"] in ("arduino", "avr"):
+        expected.add("eeprom_tool.py")
+    if stm32cube:
+        expected.add("freertos.py")
+    with bake(answers, components=ALL_COMPONENTS) as path:
+        assert {entry.name for entry in (path / "scripts").iterdir()} == expected
+        assert (path / "src/FreeRTOSConfig.h").exists() == stm32cube
+        if "eeprom_tool.py" not in expected:
+            mentions = [
+                str(entry.relative_to(path))
+                for entry in path.rglob("*")
+                if entry.is_file()
+                and ".git" not in entry.relative_to(path).parts
+                and "eeprom_tool" in entry.read_text(errors="ignore")
+            ]
+            assert mentions == []

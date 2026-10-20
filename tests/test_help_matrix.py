@@ -66,7 +66,7 @@ PLATFORMS = [
 ]
 LIFECYCLE = {"build", "upload", "monitor", "test", "clean", "help", "increment_version"}
 FOLDERS = {
-    "ltspice": "ltspice",
+    "ltspice": "simulations",
     "docs": "docs",
     "data": "data",
     "ci": ".github",
@@ -139,6 +139,9 @@ def assert_help(project, answers, selected):
         expected.add("sim")
     if "ltspice" in selected:
         expected.add("ltspice")
+    host = answers.get("host_side") == "Yes"
+    if host:
+        expected.update({"host-run", "host-app-test"})
     assert names == expected, sorted(names)
 
     makefile = (project / "Makefile").read_text()
@@ -147,6 +150,8 @@ def assert_help(project, answers, selected):
     assert ("\nenv: create_environment" in makefile) is installers
     assert ("\nsim:" in makefile) is ("simulator" in selected)
     assert ("\nltspice:" in makefile) is ("ltspice" in selected)
+    assert ("\nhost-run:" in makefile) is host
+    assert ("\nhost-app-test:" in makefile) is host
     eeprom = answers["platform"] in {"arduino", "avr"}
     assert ("\neeprom-backup:" in makefile) is eeprom
     assert ("\neeprom-restore:" in makefile) is eeprom
@@ -167,3 +172,10 @@ def test_component_help(rendered, component, present, selected):
     project = rendered(ARDUINO, selected)
     assert_help(project, ARDUINO, selected)
     assert (component in selected) is present
+
+
+@pytest.mark.parametrize("host_side", ["Yes", "No"])
+def test_host_side_help(rendered, host_side):
+    answers = {**ARDUINO, "host_side": host_side}
+    project = rendered(answers, DEFAULT_COMPONENTS)
+    assert_help(project, answers, DEFAULT_COMPONENTS)

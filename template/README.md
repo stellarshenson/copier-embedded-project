@@ -8,6 +8,7 @@
 {%- set has_eeprom = platform in ['arduino', 'avr'] -%}
 {%- set installer = 'firmware-avr' if platform in ['arduino', 'avr'] else 'firmware-' ~ platform -%}
 {%- set has_ltspice = 'ltspice' in components -%}
+{%- set has_host = (host_side | default('No')) == 'Yes' -%}
 {%- set environment_scope = environment_scope | default('global') -%}
 {%- set repo = repo_name -%}
 {%- set avr_target = avr_target | default('avr-none') -%}
@@ -215,7 +216,7 @@ module, and the README states which test tiers the board can run and which emula
 2. `make build` - build the firmware.
 3. `make upload PORT=/dev/ttyUSB0` - write the firmware to the board.
 4. `make monitor PORT=/dev/ttyUSB0` - print the console at {{ serial_baud }} baud.
-5. `make test` - run the host tests{% if has_simulator %} and the simulator tests{% endif %}.
+5. `make test` - run the host tests{% if has_host %} and the host application tests{% endif %}{% if has_simulator %} and the simulator tests{% endif %}.
 
 `make help` lists the rendered targets; every target that calls a toolchain program runs inside
 `{{ env_name }}` with `conda run`, and no documented step calls `pio`, `cargo`, `avrdude` or
@@ -237,9 +238,13 @@ command.
 | `make build` | build the firmware |
 | `make upload` | write the firmware to the board on `PORT` |
 | `make monitor` | open the console on `PORT` at `BAUD` |
-| `make test` | run the host tests{% if has_simulator %} and the simulator tests{% endif %}{% if has_ltspice %} and the circuit test{% endif %} |
+| `make test` | run the host tests{% if has_host %} and the host application tests{% endif %}{% if has_simulator %} and the simulator tests{% endif %}{% if has_ltspice %} and the circuit test{% endif %} |
 {% if has_simulator -%}
 | `make sim` | run the firmware in the simulator |
+{% endif -%}
+{% if has_host -%}
+| `make host-run` | read the boot line from the board on `PORT` with the host application and print one JSON line |
+| `make host-app-test` | run the host application tests in `host/tests/` |
 {% endif -%}
 {% if has_ltspice -%}
 | `make ltspice` | simulate the surrounding circuit with LTspice or ngspice |
@@ -268,8 +273,7 @@ full process and its rules.
 Every push and pull request builds and tests the firmware in `.github/workflows/build.yml`. The
 firmware files are uploaded as the `firmware` artifact. A `v*` tag publishes a GitHub Release. The
 conda environment is cached under `.conda/envs`, keyed on the installer files. CI requires the
-`env-installers` component; a project without it stops the workflow with that reason. The toolchain
-and functional tiers run locally when the lab environments are not available.
+`env-installers` component; a project without it stops the workflow with that reason.
 {% endif %}
 ## Folder structure
 
@@ -345,16 +349,26 @@ and functional tiers run locally when the lab environments are not available.
 │   ├── harness/                   # simulator wrapper and board helpers
 │   └── functional/                # simulator tests
 {% endif -%}
-├── tools/
-{% if has_eeprom and has_ltspice -%}
-│   ├── README.md
-│   ├── eeprom_tool.py             # EEPROM backup and restore
-│   └── freertos.py                # only when the STM32Cube branch uses it? see toolchain
-{% elif has_eeprom -%}
+├── scripts/                       # PC-side helper scripts; README states the contract
+{% if has_eeprom -%}
 │   ├── README.md
 │   └── eeprom_tool.py             # EEPROM backup and restore
+{% elif platform == 'stm32' and stm32_toolchain == 'platformio' and stm32_framework == 'stm32cube' -%}
+│   ├── README.md
+│   └── freertos.py                # PlatformIO build hook, run through extra_scripts
 {% else -%}
 │   └── README.md
+{% endif -%}
+{% if has_host -%}
+├── host/                          # PC-side Python package; never built for the board
+│   ├── pyproject.toml             # distribution {{ repo }}-host, dependency pyserial
+│   ├── src/
+│   │   └── {{ host_module }}/
+│   │       ├── __init__.py
+│   │       ├── __main__.py        # python -m {{ host_module }}: boot line as one JSON line
+│   │       ├── serial_client.py   # read_boot_line, open_port
+│   │       └── protocol.py        # crc8, the same algorithm as the core
+│   └── tests/                     # make host-app-test
 {% endif -%}
 {% if 'resources' in components or has_installers or has_eeprom -%}
 ├── resources/
@@ -386,7 +400,7 @@ and functional tiers run locally when the lab environments are not available.
 │   └── processed/
 {% endif -%}
 {% if has_ltspice -%}
-├── ltspice/
+├── simulations/
 │   ├── README.md
 │   ├── circuit.cir                # ATtiny84 pin driving a gain-2 op-amp
 │   ├── run.py                     # LTspice or ngspice runner
@@ -424,7 +438,7 @@ and functional tiers run locally when the lab environments are not available.
 
 Selected components: `{{ components | join('`, `') }}`. A folder owned by a component is present
 only when that component was selected. `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md`, `Makefile`,
-`src/`, `lib/`, `test/host/` and `tools/` are always present. `src/` is the master source root on
+`src/`, `lib/`, `test/host/` and `scripts/` are always present. `src/` is the master source root on
 every platform; on ESP-IDF, `main` is a relative symlink to `src` that supplies the component
 name, and the build reads the same files once.
 
@@ -453,8 +467,12 @@ name, and the build reads the same files once.
 {% endif -%}
 | Firmware adapter for the board | `src/` |
 | Host, simulator and functional tests | `test/host/`, `test/harness/`, `test/functional/` |
+| PC-side helper scripts: no interactive input, one JSON line, a non-zero exit with a reason | `scripts/` |
+{% if has_host -%}
+| PC-side code that talks to the board, and its tests | `host/src/{{ host_module }}/`, `host/tests/` |
+{% endif -%}
 {% if has_ltspice -%}
-| Circuit netlist and its runner | `ltspice/` |
+| Circuit netlist and its runner | `simulations/` |
 {% endif -%}
 {% if 'data' in components -%}
 | Raw and processed data | `data/raw/`, `data/processed/` |
@@ -515,9 +533,11 @@ change, and the targets, the test tiers and the folders stay the same.
 {% if has_ltspice -%}
 ## Circuit simulation
 
-`ltspice/circuit.cir` models the ATtiny84 pin as a 0-5 V pulse at 1 kHz driving a non-inverting
+`simulations/circuit.cir` models the ATtiny84 pin as a 0-5 V pulse at 1 kHz driving a non-inverting
 op-amp with gain 2. The firmware is not co-simulated: the pin is the voltage source the firmware
-produces, and the analog circuit is simulated around it.
+produces, and the analog circuit is simulated around it. `simulations/` holds circuit simulations
+(LTspice or ngspice), while the simulator component runs the firmware under simavr or QEMU in
+`test/harness/`.
 
 - `make ltspice` runs the netlist with LTspice when it is on PATH, otherwise ngspice
 - `make ltspice` fails when the measured output does not follow the pin
@@ -539,6 +559,28 @@ jupyterlab-device monitor read <device>
 
 The wire settings come from the port record. The bridge pty refuses `PARENB`, so `stm32flash`
 uses `-m 8n1` through the bridge and `-m 8e1` on a direct port.
+{% endif -%}
+
+{% if has_host %}
+## Host side
+
+`host/` holds the Python package `{{ host_module }}`. It runs on the PC and talks to the board
+over the serial port. The firmware build never compiles `host/`.
+
+- `make host-run PORT=<port>` reads the console until `[BOOT] {{ repo }}` and prints one JSON
+  line with `port`, `boot` and `line`; it exits 1 with the reason when the boot line does not
+  arrive
+- `make host-app-test` runs `host/tests/` without a board; `make test` runs it as well
+- `protocol.crc8` uses the polynomial, the initial value and the bit order of
+  {{ '`crc8` in `src/lib.rs`' if is_rust else '`core_crc8` in `lib/core/core.c`' }}, so the PC and the firmware compute the same checksum
+- The make targets set `PYTHONPATH=host/src` and need no install
+
+Install the package into the environment to import `{{ host_module }}` from a notebook:
+
+```bash
+{{ 'CONDA_ENVS_PATH=.conda/envs ' if environment_scope == 'local' else '' }}conda run -n {{ env_name }} pip install -e host
+```
+
 {% endif -%}
 
 ## Hardware facts

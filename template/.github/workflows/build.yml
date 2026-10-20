@@ -45,7 +45,7 @@ jobs:
 {% if platformio %}
           find .pio/build/{{ pio_board }} -maxdepth 1 -type f \( -name '*.bin' -o -name '*.elf' -o -name '*.hex' \) -exec cp {} dist/ \;
 {% elif avr_rust %}
-          cp target/{{ avr_target }}/release/{{ repo_name }} dist/
+          cp target/{{ avr_target }}/release/{{ repo_name }}.elf dist/
 {% else %}
           cp target/{{ thumb_target }}/release/{{ repo_name }} dist/
 {% endif %}
