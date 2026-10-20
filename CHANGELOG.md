@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.16] - 2026-10-20
+
+### Changed
+
+- `/release-copier-template` runs the whole release without approval questions; it stops only when
+  there is nothing to release, `main` has diverged from `origin/main`, or a command fails
+
 ## [1.0.15] - 2026-10-20
 
 ### Removed
