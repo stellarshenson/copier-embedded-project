@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import re
 import subprocess
 
 import pytest
-from helpers import ROOT, bake
+from helpers import bake
 
 DEFAULT_COMPONENTS = [
     "notebooks",
@@ -267,8 +266,6 @@ DEVICE_SECTIONS = [
     "Sources",
 ]
 
-TURMO_SOURCE = ROOT / "template/references/devices/turmo-usb-monitor.md"
-
 
 def test_acc_tmpl_56_devref_readme_names_the_format_and_the_file_naming():
     """ACC-TMPL-56-DEVREF-README: devices/README.md names the nine sections in order."""
@@ -282,21 +279,7 @@ def test_acc_tmpl_56_devref_readme_names_the_format_and_the_file_naming():
         assert positions == sorted(positions), positions
         listing = (path / "references/README.md").read_text()
         assert "- `devices/` - " in listing
-
-
-def test_acc_tmpl_57_devref_turmo_renders_verbatim():
-    """ACC-TMPL-57-DEVREF-TURMO: the rendered TURMO reference equals the template source."""
-    source = TURMO_SOURCE.read_bytes()
-    assert source.count(b"```") >= 6
-    with bake({"platform": "arduino"}) as path:
-        rendered = (path / "references/devices/turmo-usb-monitor.md").read_bytes()
-        assert rendered == source
-        headings = [
-            line.split(". ", 1)[1]
-            for line in rendered.decode().splitlines()
-            if re.match(r"## \d+\. ", line)
-        ]
-        assert headings == DEVICE_SECTIONS
+        assert not any(path.rglob("turmo-usb-monitor.md"))
 
 
 def test_acc_tmpl_58_devref_absent_without_references():
@@ -304,7 +287,6 @@ def test_acc_tmpl_58_devref_absent_without_references():
     without = [item for item in DEFAULT_COMPONENTS if item != "references"]
     with bake({"platform": "arduino"}, components=without) as path:
         assert not (path / "references").exists()
-        assert not any(path.rglob("turmo-usb-monitor.md"))
 
 
 SIMULATIONS = {"README.md", "circuit.cir", "run.py", "test_circuit.py"}

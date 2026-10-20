@@ -430,18 +430,20 @@ What a generated project holds and which parts are options
   - test-tags: UNIT
   - log: 2026-10-19T17:01:34Z @kj added
   - log: 2026-10-19T18:17:20Z @kj closed
-- [x] `ACC-TMPL-57-DEVREF-TURMO` **The TURMO reference is the worked example** - MEDIUM; a project rendered with the references component has references/devices/turmo-usb-monitor.md, rendered verbatim with no Jinja substitution inside its code blocks
-  - evidence: 2026-10-19 pytest tests/test_components.py::test_acc_tmpl_57_devref_turmo_renders_verbatim passed, rendered file equal byte for byte to the source; the template file cmp equal to the extension copy with 0 Jinja markers; mutation '{{ 1 + 1 }}' appended made it fail, file restored and cmp equal
+- [-] `ACC-TMPL-57-DEVREF-TURMO` **The TURMO reference is the worked example** - MEDIUM; a project rendered with the references component has references/devices/turmo-usb-monitor.md, rendered verbatim with no Jinja substitution inside its code blocks
   - test: tests/test_components.py: render with references, compare references/devices/turmo-usb-monitor.md byte for byte with the template source
   - test-tags: UNIT
   - log: 2026-10-19T17:01:34Z @kj added
   - log: 2026-10-19T18:17:20Z @kj closed
-- [x] `ACC-TMPL-58-DEVREF-ABSENT` **No device references without the references component** - MEDIUM; a project rendered without the references component has no references/devices/ and no turmo-usb-monitor.md
-  - evidence: 2026-10-19 pytest tests/test_components.py::test_acc_tmpl_58_devref_absent_without_references passed: a project rendered without the references component has no references/devices/ and no turmo-usb-monitor.md
+  - log: 2026-10-20T07:13:17Z @kj rejected: user decision 2026-10-20: the TURMO example lives only in the device bridge extension skill; the template keeps references/devices/README.md; evidence retired: 2026-10-19 pytest tests/test_components.py::test_acc_tmpl_57_devref_turmo_renders_verbatim passed, rendered file equal byte for byte to the source; the template file cmp equal to the extension copy with 0 Jinja markers; mutation '{{ 1 + 1 }}' appended made it fail, file restored and cmp equal
+- [x] `ACC-TMPL-58-DEVREF-ABSENT` **No device references without the references component** - MEDIUM; a project rendered without the references component has no references/devices/
+  - evidence: 2026-10-20 pytest tests/test_components.py::test_acc_tmpl_58_devref_absent_without_references passed after the TURMO removal: a project rendered without the references component has no references/ and so no references/devices/
   - test: tests/test_components.py: render without references, assert references/ and references/devices/ are absent
   - test-tags: UNIT
   - log: 2026-10-19T17:01:34Z @kj added
   - log: 2026-10-19T18:17:20Z @kj closed
+  - log: 2026-10-20T07:13:24Z @kj amended text "a project rendered without the references component has no references/devices/ and no turmo-usb-monitor.md" -> "a project rendered without the references component has no references/devices/"
+  - log: 2026-10-20T07:13:35Z @kj edited evidence "2026-10-19 pytest tests/test_components.py::test_acc_tmpl_58_devref_absent_without_references passed: a project rendered without the references component has no references/devices/ and no turmo-usb-monitor.md" -> "2026-10-20 pytest tests/test_components.py::test_acc_tmpl_58_devref_absent_without_references passed after the TURMO removal: a project rendered without the references component has no references/ and so no references/devices/"
 - [x] `ACC-TMPL-59-HOST-SIDE` **Questionnaire asks for the host side** - MEDIUM; host_side No/Yes, default No, is asked directly before components; No leaves no host/ path, no host target and no host text
   - evidence: 2026-10-19 make test 512 passed, 6 skipped; tests/test_host.py::test_host_side_no_renders_no_host_package, tests/test_help_matrix.py::test_host_side_help[Yes] and [No], tests/test_copy_matrix.py::test_question_choices[host_side-expected16-No] and tests/test_post_gen.py::test_host_side_no_drops_the_host_package passed
   - test: render No and Yes; No has no host/ and no host targets in make help; Yes has both

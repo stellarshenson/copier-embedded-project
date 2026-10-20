@@ -5,7 +5,7 @@ A device reference is one markdown file per device that states what the device i
 - **File** - `references/devices/<device>.md`, `<device>` in lowercase words joined by hyphens, one file per device
 - **Datasheets** - the datasheets a reference cites go to `references/datasheets/`, named `<part>-<document>.pdf`
 - **Procedure** - the device bridge agent skill `jupyterlab-device-bridge-extension` holds the steps to research and write a reference, in its `references/device-reference.md`
-- **Example** - `turmo-usb-monitor.md` is the worked example of the format
+- **Example** - the device bridge agent skill `jupyterlab-device-bridge-extension` carries the worked example of the format, in its `references/devices/turmo-usb-monitor.md`
 
 ## Format
 

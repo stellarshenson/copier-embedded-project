@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Removed
+
+- The template no longer renders `references/devices/turmo-usb-monitor.md`; the TURMO example lives
+  in the skill of the device bridge extension, and `references/devices/README.md` now points there.
+  In testing, `copier update` from 1.0.14 deleted `references/devices/turmo-usb-monitor.md` and left
+  `references/devices/README.md` with its 1.0.14 text, which still names that file as the example,
+  because the update does not overwrite files under `references/`
+
 ## [1.0.14] - 2026-10-20
 
 ### Added
