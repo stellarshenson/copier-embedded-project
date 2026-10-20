@@ -327,13 +327,13 @@ What a generated project holds and which parts are options
   - log: 2026-10-17T22:33:51Z @kj added
   - log: 2026-10-18T01:19:57Z @kj edited text "the questionnaire offers the environment installation scope - global (a conda environment named after the project) or local (an environment under the project) - and make create_environment installs it in the chosen scope" -> "the questionnaire offers the environment installation scope - global (a conda environment under the shared conda root) or local (an environment under the project) - and make create_environment installs the firmware-<platform> environment in the chosen scope"; reason: superseded by ACC-TMPL-30 per docs/template-design.md
   - log: 2026-10-18T01:34:32Z @kj closed
-- [x] `ACC-TMPL-43` **Device bridge support is opt in** - HIGH; the device-bridge component makes the generated project work with the jupyterlab_device_bridge_extension: the device skill and README name the pty path form, the run --device upload form and the monitor commands, and the Makefile takes PORT from the bridge's device directory
-  - evidence: tests/test_components.py::test_device_bridge_component: make test 2026-10-18, 321 passed, 5 skipped
+- [-] `ACC-TMPL-43` **Device bridge support is opt in** - HIGH; the device-bridge component makes the generated project work with the jupyterlab_device_bridge_extension: the device skill and README name the pty path form, the run --device upload form and the monitor commands, and the Makefile takes PORT from the bridge's device directory
   - test: tests/test_components.py: the device-bridge component adds the bridge facts (to add)
   - test-tags: FUNCTIONAL
   - mechanism: 2026-10-17T22:33:51Z @kj the component renders bridge instructions into the device skill and README; PORT stays overridable
   - log: 2026-10-17T22:33:51Z @kj added
   - log: 2026-10-17T23:49:48Z @kj closed
+  - log: 2026-10-20T11:52:27Z @kj rejected: user decision 2026-10-20: the device-bridge component is removed; each project sets its serial port in .env, copied from .env.example; evidence retired: tests/test_components.py::test_device_bridge_component: make test 2026-10-18, 321 passed, 5 skipped
 - [x] `ACC-TMPL-44` **Shared core with per-target adapters** - HIGH; the pure logic lives in one toolchain-neutral module that every platform's build compiles and the host tests cover; each platform keeps its own roots and a thin adapter
   - evidence: tests/test_toolchain.py::test_c_core_is_one_shared_module, ::test_rust_core_is_the_package_library and ::test_one_build_root_and_one_adapter; tests/test_makefile.py::test_host_tests_compile_the_shared_core: make test 2026-10-18, 321 passed, 5 skipped
   - test: tests/test_copy_matrix.py: each platform's host test compiles the shared module (to add)
@@ -492,4 +492,10 @@ What a generated project holds and which parts are options
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-19T20:02:38Z @kj added
   - log: 2026-10-19T22:49:18Z @kj closed
+- [x] `ACC-TMPL-66-ENV-PORT` **Serial settings come from a gitignored .env** - HIGH; a rendered project sets PORT, BAUD and STM32_SERIAL_MODE per machine in a gitignored .env copied from .env.example, and a value on the command line wins
+  - evidence: tests/test_makefile.py::test_acc_tmpl_66_env_port_upload_precedence[arduino-uno] and [stm32-rust], ::test_acc_tmpl_66_env_port_stm32_serial_mode_from_env, ::test_acc_tmpl_66_env_port_example_renders_the_defaults[arduino-uno] and [stm32-rust] and ::test_acc_tmpl_66_env_port_gitignore_ignores_env_only: make test 2026-10-20, 549 passed, 7 skipped
+  - test: tests/test_makefile.py::test_acc_tmpl_66_env_port_upload_precedence[arduino-uno] and [stm32-rust], ::test_acc_tmpl_66_env_port_stm32_serial_mode_from_env, ::test_acc_tmpl_66_env_port_example_renders_the_defaults and ::test_acc_tmpl_66_env_port_gitignore_ignores_env_only
+  - test-tags: FUNCTIONAL
+  - log: 2026-10-20T11:52:27Z @kj added
+  - log: 2026-10-20T12:33:12Z @kj closed
 

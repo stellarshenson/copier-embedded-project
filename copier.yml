@@ -278,7 +278,6 @@ components:
     - ci
     - agents
     - env-installers
-    - device-bridge
   default:
     - notebooks
     - resources
@@ -286,7 +285,7 @@ components:
     - simulator
     - agents
     - env-installers
-  help: "Optional folders: notebooks, resources, references, data, simulator, docs, CI, AI-agent support, environment installers, device bridge"
+  help: "Optional folders: notebooks, resources, references, data, simulator, docs, CI, AI-agent support, environment installers"
 
 # ---------------------------------------------------------------------------
 # Derived answers, never asked

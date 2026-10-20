@@ -45,7 +45,6 @@ ALL_COMPONENTS = [
     "ci",
     "agents",
     "env-installers",
-    "device-bridge",
 ]
 
 TREE_FILES = [

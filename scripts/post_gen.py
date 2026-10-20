@@ -25,8 +25,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Each component owns these paths. `device-bridge` owns no path: it only changes
-# the files other parts render.
+# Each component owns these paths.
 COMPONENT_PATHS = {
     "notebooks": ["notebooks"],
     "resources": ["resources/README.md", "resources/graphics", "resources/external"],

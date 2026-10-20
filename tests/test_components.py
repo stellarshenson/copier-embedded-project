@@ -21,7 +21,6 @@ ALL_COMPONENTS = DEFAULT_COMPONENTS + [
     "ltspice",
     "docs",
     "ci",
-    "device-bridge",
 ]
 
 
@@ -92,8 +91,6 @@ def test_all_components():
         assert (path / "references/notes").is_dir()
         assert (path / "data/README.md").is_file()
         assert (path / "resources/envs/firmware-avr.py").is_file()
-        skill = (path / ".agents/skills/board-device/SKILL.md").read_text()
-        assert "jupyterlab-device" in skill
 
 
 def test_agents_master_layout():
@@ -228,30 +225,6 @@ def test_device_skill_covers_bare_avr_rust():
         assert "ISP through `avrdude -c " in text
         assert "Upload:  programmer" not in text
         assert "`make upload PORT=<port>`" in text
-
-
-def test_device_bridge_component():
-    with bake({"platform": "arduino"}, components=DEFAULT_COMPONENTS + ["device-bridge"]) as path:
-        skill = (path / ".agents/skills/board-device/SKILL.md").read_text()
-        readme = (path / "README.md").read_text()
-        for text in (skill, readme):
-            assert "tty-<vid>-<pid>" in text
-            assert "jupyterlab-device run --device" in text
-            assert "jupyterlab-device monitor read" in text
-        assert "$DEVICE_DIR" in skill
-        assert "-m 8n1" in skill
-        makefile = (path / "Makefile").read_text()
-        assert "DEVICE_DIR" in makefile
-        assert "PORT ?= $(shell ls $(DEVICE_DIR)/tty-*" in makefile
-        assert "STM32_SERIAL_MODE = 8n1" in makefile
-
-    with bake({"platform": "arduino"}) as path:
-        skill = (path / ".agents/skills/board-device/SKILL.md").read_text()
-        readme = (path / "README.md").read_text()
-        assert "jupyterlab-device" not in skill
-        assert "jupyterlab-device" not in readme
-        makefile = (path / "Makefile").read_text()
-        assert "PORT ?= /dev/ttyUSB0" in makefile
 
 
 DEVICE_SECTIONS = [

@@ -722,7 +722,6 @@ def test_components_default_matches_the_design():
         "ci",
         "agents",
         "env-installers",
-        "device-bridge",
     ]
     assert question["default"] == [
         "notebooks",

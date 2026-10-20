@@ -18,6 +18,9 @@ __pycache__/
 # Local conda environment
 .conda/
 
+# Serial settings of this machine
+.env
+
 # Working files
 logs/
 tmp/

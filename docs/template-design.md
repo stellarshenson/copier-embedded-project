@@ -17,7 +17,7 @@ ids are cited where a decision serves one. `docs/philosophy.md` holds the princi
 
 ## 1. Components
 
-Eleven components. `components` is a multiselect; the default selection is
+Ten components. `components` is a multiselect; the default selection is
 `notebooks, resources, references, simulator, agents, env-installers`.
 
 | Component | Default | Renders | Removed on a fresh copy when unselected |
@@ -32,17 +32,13 @@ Eleven components. `components` is a multiselect; the default selection is
 | `agents` | on | `.agents/skills/<repo>-device/SKILL.md`, `.agents/workflows/build-and-flash.md`, the `.claude` links | `.agents/`, `.claude/skills/`, `.claude/commands` |
 | `env-installers` | on | `resources/envs/firmware_env.py`, the platform installer, the `create_environment` target | `resources/envs/`; the target is not rendered |
 | `ltspice` | off | `simulations/README.md`, `simulations/circuit.cir` (ATtiny84 pin driving a gain-2 op-amp), `simulations/run.py` and `simulations/test_circuit.py`; the `ltspice` target, and `test` depends on it | `simulations/` and the target |
-| `device-bridge` | off | README section, Makefile `DEVICE_DIR` and `PORT` default, device skill section | no owned path; render conditions only |
 
 Always rendered, independent of `components`: `AGENTS.md`, `CLAUDE.md`, `Makefile`, `CHANGELOG.md`,
-`.gitignore`, `.copier-answers.yml`, `LICENSE` (unless the license answer is `No license file`),
+`.gitignore`, `.env.example`, `.copier-answers.yml`, `LICENSE` (unless the license answer is `No license file`),
 `src/`, `lib/`, `test/host/`, `scripts/`, and the toolchain build file.
 
 `AGENTS.md` and `CLAUDE.md` are not owned by `agents`: `ACC-TMPL-14` requires both at the repository
 root in every project. The `agents` component owns the master tree and the links only.
-
-`device-bridge` owns no path. It changes rendered text and the Makefile `PORT` default; a project
-without the component keeps the same tree.
 
 `host/` is not a component. The `host_side` question adds it; section 3.5 holds its layout.
 
@@ -375,12 +371,14 @@ installer to run: `~/.local/lab-utils/envs/firmware-<platform>.py` (`ACC-TMPL-4`
 | `ENV` | `{{ env_name }}` | the conda environment name |
 | `ENV_RUN` | `conda run --no-capture-output -n $(ENV)` | prefix of every toolchain command |
 | `PROJECT_DIR` | the Makefile directory | paths and the local environment root |
-| `PORT` | `/dev/ttyUSB0`, or the first bridge pty when `device-bridge` is selected | upload, monitor, host-run |
+| `PORT` | `/dev/ttyUSB0` | upload, monitor, host-run |
 | `BAUD` | `{{ serial_baud }}` | monitor, upload, stm32flash, host-run |
-| `STM32_SERIAL_MODE` | `8n1` with `device-bridge`, else `8e1` | `stm32flash -m` |
-| `DEVICE_DIR` | `/run/devices` if writable, else `/tmp/jupyterlab-device-$(shell id -u)` | bridge pty discovery |
+| `STM32_SERIAL_MODE` | `8e1` | `stm32flash -m` |
 | `HOST_CC` | `x86_64-conda-linux-gnu-cc` | host tests |
 | `BUILD_DIR` | `build` | host test binary and Rust binary output |
+
+`PORT`, `BAUD` and `STM32_SERIAL_MODE` take the value on the command line, then the value in `.env`,
+then the default (section 6.5).
 
 Every target that calls a toolchain program runs inside the environment through `$(ENV_RUN)`,
 including `build`, `upload`, `monitor`, `test`, `sim`, the EEPROM targets and the host targets
@@ -429,8 +427,9 @@ explains the trade-off.
 | Bare AVR Rust | `$(ENV_RUN) cargo build --release --target avr-none` | `$(ENV_RUN) avrdude -c <programmer> -p <mcu> -P $(PORT) -U flash:w:<elf>` | `$(ENV_RUN) python -m serial.tools.miniterm $(PORT) $(BAUD)` |
 | STM32 Rust | `$(ENV_RUN) cargo build --release --target {{ thumb_target }}` | `$(ENV_RUN) cargo objcopy ... -O binary`, then `$(ENV_RUN) stm32flash -b $(BAUD) -m $(STM32_SERIAL_MODE) -w <bin> -v -g 0x0 $(PORT)` | `$(ENV_RUN) python -m serial.tools.miniterm $(PORT) $(BAUD)` |
 
-`stm32flash` needs `-m 8n1` through the bridge pty, which refuses `PARENB`; on a direct port the
-STM32 ROM bootloader uses `8e1`. `STM32_SERIAL_MODE` carries that difference in one place.
+`stm32flash` needs `-m 8n1` on a port that refuses `PARENB`, such as a device bridge pty; on a
+direct port the STM32 ROM bootloader uses `8e1`. `STM32_SERIAL_MODE` carries that difference in one
+place, and `.env` sets it per machine.
 
 ### 4.5 EEPROM targets
 
@@ -511,9 +510,9 @@ still produces the links it can. The links are relative; the project stays porta
 
 `SKILL.md` frontmatter names the skill and its trigger. The body carries:
 
-- Board facts: platform, board id, MCU, clock, flash and RAM, upload protocol.
-- Port discovery: `ls /dev/ttyUSB* /dev/ttyACM*`; with `device-bridge`,
-  `ls $DEVICE_DIR` and the pty form `tty-<vid>-<pid>`.
+- Board facts: platform, board id, MCU, clock, flash and RAM, upload protocol; on STM32 Rust, the
+  rule that a port refusing parity needs `STM32_SERIAL_MODE=8n1` in `.env`.
+- Port discovery: `ls /dev/ttyUSB* /dev/ttyACM*`.
 - Environment: `make create_environment`, or the lab installer when the component is absent.
 - Build and upload: the exact make targets, `PORT` and `BAUD`, and the board's reset sequence.
 - Non-interactive console: read until `[BOOT] <repo>`; never open an interactive monitor in an
@@ -523,9 +522,9 @@ still produces the links it can. The links are relative; the project stays porta
 - Troubleshooting table: symptom, cause, action, covering no port, permission denied, bootloader
   timeout, wrong baud, and a simulator skip.
 - Simulator limits for the board, from the capability matrix.
-- Device bridge, when chosen (section 6.4).
 
-`build-and-flash.md` runs `make build`, `make upload PORT=...`, reads the monitor until
+`build-and-flash.md` runs `make build`, `make upload PORT=...` (`make upload` when `.env` sets
+`PORT`), reads the monitor until
 `[BOOT] <repo>`, and reports the build size and the first boot line.
 
 ### 6.4 Toolchain skill
@@ -548,19 +547,23 @@ carries:
 `references/toolchains.md` lists the stages and programs of the project's installer. It names tools,
 not versions: the pins sit at the top of the installer, and a copy in the skill would drift.
 
-### 6.5 Device bridge
+### 6.5 Port configuration
 
-With `device-bridge` selected, the README and the device skill carry (`ACC-TMPL-43`):
+Every project reads its serial settings from `.env` in the project root. `.gitignore` lists `.env`,
+so each machine keeps its own port out of git, and the template renders `.env.example` to copy from
+(`ACC-TMPL-66-ENV-PORT`).
 
-- The pty path form: `tty-<vid>-<pid>` under `/run/devices`, or under
-  `/tmp/jupyterlab-device-<uid>` when `/run/devices` is not writable.
-- The upload form: `jupyterlab-device run --device <device> -- make upload`.
-- The monitor form: `jupyterlab-device monitor read <device>`.
-- The rule that wire settings come from the port record; the bridge pty refuses `PARENB`, so
-  `stm32flash` uses `-m 8n1`.
-- The Makefile default: `DEVICE_DIR` as above and `PORT` from the first `tty-*` in it.
-
-Without the component, none of these lines render and `PORT` defaults to `/dev/ttyUSB0`.
+- The Makefile runs `-include .env` before `PORT ?= /dev/ttyUSB0`, `STM32_SERIAL_MODE ?= 8e1` and
+  `BAUD ?= {{ serial_baud }}`
+- Precedence: the value on the command line, then `.env`, then the Makefile default
+- `.env.example` holds commented `NAME=value` lines in make syntax, without quotes: `PORT`, `BAUD`
+  and, on STM32 Rust, `STM32_SERIAL_MODE`
+- Only the STM32 Rust upload reads `STM32_SERIAL_MODE`, so only its `.env.example` carries the line
+- A device bridge pty is one possible `PORT`: `PORT=/run/devices/tty-<vid>-<pid>`
+- A port that refuses `PARENB`, such as a device bridge pty, needs `STM32_SERIAL_MODE=8n1`; a direct
+  port uses the `8e1` of the STM32 ROM bootloader
+- `copier update` leaves `.gitignore` unchanged (`_skip_if_exists`), so a project updated from 1.0.17
+  or older adds the `.env` line itself
 
 ## 7. post_gen and update behaviour
 
@@ -582,7 +585,6 @@ docs           docs
 ci             .github
 agents         .agents .claude/skills .claude/commands
 env-installers resources/envs
-device-bridge  (no path)
 ```
 
 `resources/envs` is owned by `env-installers`, not by `resources`. A project with `resources`

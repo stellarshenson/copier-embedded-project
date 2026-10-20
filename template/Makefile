@@ -6,7 +6,6 @@
 {%- set simulator = 'simulator' in components -%}
 {%- set ltspice = 'ltspice' in components -%}
 {%- set installers = 'env-installers' in components -%}
-{%- set bridge = 'device-bridge' in components -%}
 {%- set eeprom = platform in ['arduino', 'avr'] -%}
 {%- set avr_harness = simulator and ((platform == 'arduino' and arduino_board in ['uno', 'nano']) or (platform == 'avr' and avr_mcu in ['atmega328p', 'attiny85'])) -%}
 {%- set avr_programmer_id = ('arduinoisp' if avr_programmer == 'arduino-isp' else 'usbasp') if platform == 'avr' else '' -%}
@@ -25,14 +24,11 @@ ENV_SCOPE ?= {{ environment_scope }}
 ifeq ($(ENV_SCOPE),local)
 export CONDA_ENVS_PATH := $(PROJECT_DIR)/.conda/envs
 endif
-{% if bridge %}
-DEVICE_DIR := $(shell if [ -w /run/devices ]; then echo /run/devices; else echo /tmp/jupyterlab-device-$$(id -u); fi)
-PORT ?= $(shell ls $(DEVICE_DIR)/tty-* 2>/dev/null | head -n 1)
-STM32_SERIAL_MODE = 8n1
-{% else %}
+
+# The serial settings of this machine: .env, copied from .env.example; a value on the command line wins
+-include .env
 PORT ?= /dev/ttyUSB0
-STM32_SERIAL_MODE = 8e1
-{% endif %}
+STM32_SERIAL_MODE ?= 8e1
 BAUD ?= {{ serial_baud }}
 HOST_CC = x86_64-conda-linux-gnu-cc
 BUILD_DIR = build

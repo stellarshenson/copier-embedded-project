@@ -247,19 +247,89 @@ def test_stm32_rust_uses_stm32flash():
         assert "cargo objcopy --release --target thumbv7m-none-eabi" in text
         assert "stm32flash -b $(BAUD) -m $(STM32_SERIAL_MODE)" in text
         assert "-w $(BUILD_DIR)/board.bin -v -g 0x0 $(PORT)" in text
-        assert "STM32_SERIAL_MODE = 8e1" in text
+        assert "STM32_SERIAL_MODE ?= 8e1" in text
 
 
-def test_device_bridge_selects_the_pty_and_eight_n_one():
-    answers = {"platform": "stm32", "stm32_toolchain": "rust", "stm32_board": "f103c8"}
-    with bake(answers, components=DEFAULT + ["device-bridge"]) as project:
-        text = makefile(project)
-        assert "DEVICE_DIR" in text
-        assert "/run/devices" in text
-        assert "/tmp/jupyterlab-device-" in text
-        assert "tty-*" in text
-        assert "PORT ?= " in text
-        assert "STM32_SERIAL_MODE = 8n1" in text
+def upload_dry_run(project, *arguments: str) -> str:
+    """`make -n upload` without serial settings or make flags inherited from the caller."""
+    environment = dict(os.environ)
+    for name in ("PORT", "BAUD", "STM32_SERIAL_MODE", "MAKEFLAGS", "MAKELEVEL", "MFLAGS"):
+        environment.pop(name, None)
+    result = subprocess.run(
+        ["make", "-n", "upload", *arguments],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout
+
+
+ARDUINO_UNO = {"platform": "arduino", "arduino_board": "uno"}
+STM32_RUST = {"platform": "stm32", "stm32_toolchain": "rust", "stm32_board": "f103c8"}
+
+
+@pytest.mark.parametrize(
+    "answers, upload",
+    [
+        pytest.param(ARDUINO_UNO, "--upload-port {}", id="arduino-uno"),
+        pytest.param(STM32_RUST, "-v -g 0x0 {}", id="stm32-rust"),
+    ],
+)
+def test_acc_tmpl_66_env_port_upload_precedence(answers, upload):
+    """ACC-TMPL-66-ENV-PORT: the command line wins over .env, and .env over the default."""
+    with bake(answers, components=DEFAULT) as project:
+        assert upload.format("/dev/ttyUSB0") in upload_dry_run(project)
+        (project / ".env").write_text("PORT=/dev/ttyACM7\n")
+        output = upload_dry_run(project)
+        assert upload.format("/dev/ttyACM7") in output
+        assert "/dev/ttyUSB0" not in output
+        output = upload_dry_run(project, "PORT=/dev/ttyX")
+        assert upload.format("/dev/ttyX") in output
+        assert "/dev/ttyACM7" not in output
+
+
+def test_acc_tmpl_66_env_port_stm32_serial_mode_from_env():
+    """ACC-TMPL-66-ENV-PORT: STM32_SERIAL_MODE in .env reaches the stm32flash line."""
+    with bake(STM32_RUST, components=DEFAULT) as project:
+        assert "stm32flash -b 115200 -m 8e1 " in upload_dry_run(project)
+        (project / ".env").write_text("STM32_SERIAL_MODE=8n1\n")
+        assert "stm32flash -b 115200 -m 8n1 " in upload_dry_run(project)
+
+
+@pytest.mark.parametrize(
+    "answers, baud, serial_mode",
+    [
+        pytest.param(ARDUINO_UNO, "9600", False, id="arduino-uno"),
+        pytest.param(STM32_RUST, "115200", True, id="stm32-rust"),
+    ],
+)
+def test_acc_tmpl_66_env_port_example_renders_the_defaults(answers, baud, serial_mode):
+    """ACC-TMPL-66-ENV-PORT: .env.example carries the defaults as commented make lines."""
+    with bake(answers, components=DEFAULT) as project:
+        lines = (project / ".env.example").read_text().splitlines()
+        assert all(line.startswith("# ") for line in lines), lines
+        assert "# PORT=/dev/ttyUSB0" in lines
+        assert f"# BAUD={baud}" in lines
+        assert "# PORT=/run/devices/tty-<vid>-<pid>" in lines
+        assert ("# STM32_SERIAL_MODE=8e1" in lines) is serial_mode
+        default = upload_dry_run(project)
+        values = [line[2:] for line in lines if re.match(r"# [A-Z_]+=", line) and "<" not in line]
+        (project / ".env").write_text("\n".join(values) + "\n")
+        assert upload_dry_run(project) == default
+
+
+def test_acc_tmpl_66_env_port_gitignore_ignores_env_only():
+    """ACC-TMPL-66-ENV-PORT: git ignores .env and not .env.example."""
+    with bake(ARDUINO_UNO, components=DEFAULT) as project:
+        def check_ignore(name: str) -> int:
+            return subprocess.run(
+                ["git", "check-ignore", "-q", "--no-index", name], cwd=project
+            ).returncode
+
+        assert check_ignore(".env") == 0
+        assert check_ignore(".env.example") == 1
 
 
 def test_host_tests_compile_the_shared_core():

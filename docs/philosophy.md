@@ -18,7 +18,7 @@ Every generated project uses the same top-level structure.
 
 ## 2. Components opt in
 
-Every optional tree except `host/` is a component chosen in the questionnaire: `notebooks`, `resources`, `references`, `data`, `simulator`, `docs`, `ci`, `agents`, `env-installers`, `ltspice` and `device-bridge`.
+Every optional tree except `host/` is a component chosen in the questionnaire: `notebooks`, `resources`, `references`, `data`, `simulator`, `docs`, `ci`, `agents`, `env-installers` and `ltspice`.
 
 - An unselected component leaves no folder and no target
 - A project with only the always-on parts still builds, uploads, monitors and runs its host tests

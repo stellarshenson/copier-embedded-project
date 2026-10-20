@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.18] - 2026-10-20
+
+### Removed
+
+- The `device-bridge` component; a device bridge pty is now one possible `PORT` value. In testing,
+  `copier update` from 1.0.17 of a project that had `device-bridge` exited 0, dropped the answer,
+  replaced the bridge `PORT` default with `PORT ?= /dev/ttyUSB0` and added `.env.example`, so such a
+  project sets its bridge pty as `PORT` in `.env` and adds `.env` to its `.gitignore`, which the
+  update does not change
+
+### Added
+
+- Every generated project reads `PORT`, `BAUD` and `STM32_SERIAL_MODE` from a gitignored `.env`,
+  copied from the rendered `.env.example`; a value on the make command line wins
+
 ## [1.0.17] - 2026-10-20
 
 ### Fixed

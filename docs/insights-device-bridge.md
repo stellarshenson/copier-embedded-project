@@ -30,5 +30,5 @@ The lab's device bridge gives container programs a pty for a board granted in th
 
 ## Applied in the template
 
-- The STM32 Rust upload runs `stm32flash` with `-b $(BAUD) -m $(STM32_SERIAL_MODE)`: 8n1 through the bridge and 8e1 on a direct port
-- The README states that the wire settings come from the port record
+- The STM32 Rust upload runs `stm32flash` with `-b $(BAUD) -m $(STM32_SERIAL_MODE)`: 8e1 by default, and `STM32_SERIAL_MODE=8n1` in `.env` for the bridge pty
+- `.env.example` names a bridge pty as one possible `PORT` and the 8n1 rule for a port that refuses parity

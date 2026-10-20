@@ -29,7 +29,6 @@ COMPONENTS = [
     "ci",
     "agents",
     "env-installers",
-    "device-bridge",
 ]
 PLATFORMS = [
     pytest.param({"platform": "arduino", "arduino_board": "uno"}, id="arduino-uno"),

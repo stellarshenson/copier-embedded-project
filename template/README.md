@@ -4,7 +4,6 @@
 {%- set is_rust = is_avr_rust or is_stm32_rust -%}
 {%- set has_installers = 'env-installers' in components -%}
 {%- set has_simulator = 'simulator' in components -%}
-{%- set has_bridge = 'device-bridge' in components -%}
 {%- set has_eeprom = platform in ['arduino', 'avr'] -%}
 {%- set installer = 'firmware-avr' if platform in ['arduino', 'avr'] else 'firmware-' ~ platform -%}
 {%- set has_ltspice = 'ltspice' in components -%}
@@ -153,7 +152,7 @@
 {%- set build_file = '`Cargo.toml`, `build.rs`, `memory.x`, `.cargo/config.toml` and `rust-toolchain.toml`' -%}
 {%- set adapter = '`src/bin/' ~ repo ~ '.rs`' -%}
 {%- set core = '`src/lib.rs`; the host test is `test/host/core.rs`, a Cargo test target' -%}
-{%- set upload_label = '`stm32flash` over the UART on `PORT` with `' ~ ('8n1' if has_bridge else '8e1') ~ '`' -%}
+{%- set upload_label = '`stm32flash` over the UART on `PORT` with `8e1`' -%}
 {%- set reset_label = 'Set BOOT0 high, reset the board, flash, then set BOOT0 low and reset.' -%}
 {%- set variation = '`src/bin/` for Cargo' -%}
 {%- if stm32_board == 'f405rg' -%}
@@ -217,6 +216,9 @@ module, and the README states which test tiers the board can run and which emula
 3. `make upload PORT=/dev/ttyUSB0` - write the firmware to the board.
 4. `make monitor PORT=/dev/ttyUSB0` - print the console at {{ serial_baud }} baud.
 5. `make test` - run the host tests{% if has_host %} and the host application tests{% endif %}{% if has_simulator %} and the simulator tests{% endif %}.
+
+Copy `.env.example` to `.env` and set `PORT` and `BAUD` of this machine; the Makefile reads `.env`,
+and a value on the command line wins.
 
 `make help` lists the rendered targets; every target that calls a toolchain program runs inside
 `{{ env_name }}` with `conda run`, and no documented step calls `pio`, `cargo`, `avrdude` or
@@ -289,6 +291,7 @@ conda environment is cached under `.conda/envs`, keyed on the installer files. C
 {% endif -%}
 ├── Makefile                       # the development entry point
 ├── .copier-answers.yml            # the answers that generated this project
+├── .env.example                   # serial settings to copy to .env
 ├── .gitignore
 {% if has_simulator -%}
 ├── pytest.ini                     # simulator test configuration
@@ -542,23 +545,6 @@ produces, and the analog circuit is simulated around it. `simulations/` holds ci
 - `make ltspice` runs the netlist with LTspice when it is on PATH, otherwise ngspice
 - `make ltspice` fails when the measured output does not follow the pin
 - Without either simulator the test skips with that reason
-{% endif -%}
-
-{% if has_bridge -%}
-## Device bridge
-
-The `device-bridge` component exposes each board as a pty named `tty-<vid>-<pid>`, under
-`/run/devices` or under `/tmp/jupyterlab-device-<uid>` when `/run/devices` is not writable. The
-Makefile sets `DEVICE_DIR` to that directory and `PORT` to the first pty in it; set `PORT` to
-another pty to choose a different board.
-
-```bash
-jupyterlab-device run --device <device> -- make upload
-jupyterlab-device monitor read <device>
-```
-
-The wire settings come from the port record. The bridge pty refuses `PARENB`, so `stm32flash`
-uses `-m 8n1` through the bridge and `-m 8e1` on a direct port.
 {% endif -%}
 
 {% if has_host %}

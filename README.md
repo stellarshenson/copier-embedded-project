@@ -29,7 +29,7 @@ make build
 | `stm32_toolchain` | `rust` or `platformio`; both use the one `firmware-stm32` environment |
 | `stm32_board`, `stm32_framework`, `stm32_upload` | board family, STM32Cube or Arduino, ST-Link or serial |
 | `host_side`, `host_module` | `Yes` adds `host/`, a Python package that reads the board over serial on the PC; `host_module` names it, default `<repo without hyphens>_host` |
-| `components` | multi-select: `notebooks`, `resources`, `references`, `data`, `simulator`, `docs`, `ci`, `agents`, `env-installers`, `device-bridge`, `ltspice` |
+| `components` | multi-select: `notebooks`, `resources`, `references`, `data`, `simulator`, `docs`, `ci`, `agents`, `env-installers`, `ltspice` |
 | `open_source_license` | `Apache-2.0`, `MIT`, or no license file |
 | `author_name` | a name, optionally with the email: `Konrad Jelen <konrad.jelen@gmail.com>` or `Konrad Jelen konrad.jelen@gmail.com` |
 

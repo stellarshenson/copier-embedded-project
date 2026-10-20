@@ -49,7 +49,6 @@ description: Operate the {{ project_name }} board - find its port, build, upload
   {%- set reset_action = 'over serial, set BOOT0 high and reset; over ST-Link, check the wiring' -%}
 {%- endif -%}
 {%- set installer_name = 'firmware-avr' if platform in ['arduino', 'avr'] else 'firmware-' ~ platform -%}
-{%- set bridge = 'device-bridge' in components -%}
 {%- set simulator = 'simulator' in components -%}
 {%- set uart = not (platform == 'avr' and avr_mcu == 'attiny85') %}
 
@@ -91,6 +90,7 @@ targets below are the whole development lifecycle.
 - Board: `{{ stm32_board }}`
 - MCU: {{ part[0] }}, {{ part[1] }}, {{ flash_kb }} KB flash, {{ ram_kb }} KB RAM
 - Upload: stm32flash over the ROM serial bootloader
+- A port that refuses parity, such as a device bridge pty, needs `STM32_SERIAL_MODE=8n1` in `.env`
 - Console: {{ serial_baud }} baud, 8E1 on a direct port
 {%- else -%}
 - Platform: STM32, framework {{ stm32_framework }} on PlatformIO
@@ -109,10 +109,6 @@ targets below are the whole development lifecycle.
 {%- elif platform == 'avr' %}
 - The upload uses the ISP programmer and needs no port; attach a USB-serial adapter to the UART pins for the console
 {%- endif %}
-{%- if bridge %}
-- Device bridge: `ls $DEVICE_DIR` lists one pty per port granted in the browser, named `tty-<vid>-<pid>` with both ids in hex - `tty-0483-374b` for an ST-Link, `tty-303a-1001` for an ESP32 USB Serial/JTAG
-- `DEVICE_DIR` is `/run/devices` when writable, else `/tmp/jupyterlab-device-<uid>`
-{%- endif %}
 
 ## Environment
 
@@ -127,7 +123,7 @@ targets below are the whole development lifecycle.
 
 1. `make build`
 2. Put the board in upload mode: {{ reset_action }}
-3. `make upload PORT=<port>` - `PORT` defaults to {% if bridge %}the first `tty-*` in `$DEVICE_DIR`{% else %}`/dev/ttyUSB0`{% endif %}{% if uart %} and `BAUD` to the console baud above{% endif %}
+3. `make upload PORT=<port>` - `PORT` defaults to the `PORT` set in `.env`, else `/dev/ttyUSB0`{% if uart %}, and `BAUD` to the console baud above{% endif %}
 {%- if uart %}
 4. Read the console until `[BOOT] {{ repo_name }}` appears, then stop
 {%- else %}
@@ -189,9 +185,6 @@ simulator, or decode the signal pin with a logic analyser.
 | Symptom | Cause | Action |
 |---|---|---|
 | No port listed | charge-only cable, missing driver, or the board is off | use a data cable; check `dmesg \| tail` after plugging |
-{%- if bridge %}
-| No `tty-*` in `$DEVICE_DIR` | no port granted in the browser | grant the board's port in the browser, then list again |
-{%- endif %}
 | `Permission denied` on the port | the user is not in `dialout` | `sudo usermod -aG dialout $USER`, then log in again |
 | Upload times out | the board is not in its bootloader | {{ reset_action }} |
 {%- if uart %}
@@ -237,18 +230,4 @@ skips with the reason otherwise.
 {%- else -%}
 HIL only: QEMU has no machine for this board. `make sim` skips; run the test on a board.
 {%- endif -%}
-{%- endif %}
-{%- if bridge %}
-
-## Device bridge
-
-- A port granted in the browser appears as a pty named `tty-<vid>-<pid>`, both ids in hex, under
-  `$DEVICE_DIR` (`/run/devices`, else `/tmp/jupyterlab-device-<uid>`)
-- `PORT` already defaults to the first `tty-*` in `$DEVICE_DIR`; pass `PORT=<path>` when several
-  boards are attached
-- Upload through the bridge wrapper: `jupyterlab-device run --device <device> -- make upload PORT=<path>`
-- Read the console without holding the port: `jupyterlab-device monitor read <device>`
-- The wire settings - baud, parity, stop bits and the action on open - come from the port record,
-  not from the tool; the bridge pty refuses `PARENB`, so `stm32flash` runs with `-m 8n1` and the
-  Makefile sets `STM32_SERIAL_MODE = 8n1` with this component
 {%- endif %}

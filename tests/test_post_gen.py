@@ -19,7 +19,7 @@ CONFIG_PATH = ROOT / "copier.yml"
 REPO = "board"
 
 ALL_COMPONENTS = (
-    "notebooks,resources,references,data,simulator,docs,ci,agents,env-installers,device-bridge"
+    "notebooks,resources,references,data,simulator,docs,ci,agents,env-installers"
 )
 
 # Paths the update skip list must contain; the test checks that _skip_if_exists
@@ -801,22 +801,6 @@ def test_unselected_resources_root_is_removed():
 
         assert not (directory / "resources").exists()
         assert (directory / ".claude/CLAUDE.md").is_file()
-
-
-def test_device_bridge_owns_no_path():
-    with tempfile.TemporaryDirectory() as temp:
-        first = Path(temp) / "with"
-        second = Path(temp) / "without"
-        first.mkdir()
-        second.mkdir()
-        make_tree(first)
-        make_tree(second)
-
-        run_post_gen(first, components=ALL_COMPONENTS)
-        without = [name for name in ALL_COMPONENTS.split(",") if name != "device-bridge"]
-        run_post_gen(second, components=",".join(without))
-
-        assert tree_state(first) == tree_state(second)
 
 
 def test_existing_sketch_link_is_left_alone():
