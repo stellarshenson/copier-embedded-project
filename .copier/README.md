@@ -64,8 +64,13 @@ branch, Rust included, and removes `eeprom_tool.py` on every platform but Arduin
 On `copier update` post_gen removes, under every path the answers exclude, only the untracked files
 that git does not ignore, then the directories left empty. Copier refuses to update a destination
 with untracked files, so each such file came from the update; tracked and ignored files stay, and
-outside a git work tree post_gen removes nothing. Changing the platform or the components of an
-existing project therefore needs a fresh copy. `resources/envs/` is skipped, so an existing project
+outside a git work tree post_gen removes nothing. Changing the platform, or turning a component or
+`host_side` off, therefore needs a fresh copy. post_gen also removes each untracked file that
+copier's render of the old version holds outside the components and `host/` the old answers
+excluded, because the project had removed it and copier writes it back under `_skip_if_exists`;
+post_gen finds that render as the temporary `copier._main.old_copy.*` directory whose git
+alternates name the project's objects directory, and when it is not found, post_gen says so and
+the removed starter files come back. `resources/envs/` is skipped, so an existing project
 keeps its installers on `copier update`; newer installers come from a fresh copy. The `1.0.14`
 before-stage entry of `_migrations` in `copier.yml` moves `tools/` to `scripts/` and `ltspice/` to
 `simulations/` with `git mv`, because copier deletes every file the old version rendered into a

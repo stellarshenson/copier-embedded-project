@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.17] - 2026-10-20
+
+### Fixed
+
+- `copier update` no longer writes back starter files a project removed under the folders the
+  update skips
+
 ## [1.0.16] - 2026-10-20
 
 ### Changed

@@ -614,7 +614,9 @@ Toolchain paths:
 `update` runs the same script with `--copier-operation update`. Under every unselected path it
 removes only the untracked files that git does not ignore, then the directories left empty: copier
 refuses to update a destination with untracked files, so each such file was written by the update,
-and tracked and ignored files stay. The paths in `_skip_if_exists` are never overwritten:
+and tracked and ignored files stay. A starter file the project removed stays removed; the Update
+behaviour section of `.copier/README.md` states how post_gen does this and its not-found fallback.
+The paths in `_skip_if_exists` are never overwritten:
 
 ```
 README.md
@@ -647,8 +649,8 @@ docs/
 Component trees and user documents are protected. Build files (`Makefile`, `platformio.ini`,
 `Cargo.toml`) stay template-owned so a build fix reaches an update; a user edit there can conflict
 and copier reports it (`ACC-TMPL-21`). The same rule applies to the new `references/`, `data/`,
-`host/`, `.agents/`, `AGENTS.md` and `CLAUDE.md` entries, so an update never writes into a folder
-the user owns.
+`host/`, `.agents/`, `AGENTS.md` and `CLAUDE.md` entries, so an update never overwrites a file in a
+folder the user owns.
 
 ## 8. Criteria conflicts resolved
 

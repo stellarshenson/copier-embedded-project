@@ -41,9 +41,9 @@ test:
 test-toolchain:
 	$(PY) -m pytest -q -m toolchain
 
-## Render, build and simulate the five functional projects
+## Render, build and simulate the five functional projects; run a real copier update
 test-functional:
-	RUN_FUNCTIONAL=1 $(PY) -m pytest -q tests/test_builds.py
+	RUN_FUNCTIONAL=1 $(PY) -m pytest -q tests/test_builds.py tests/test_update_functional.py
 
 ## Lint the template scripts and tests
 lint:

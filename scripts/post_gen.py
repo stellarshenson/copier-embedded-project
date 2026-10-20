@@ -9,7 +9,10 @@ those parts: Copier refuses to update a destination with untracked files, so
 every untracked file that git does not ignore came from the update. Tracked and
 ignored files stay. This holds only while git status lists untracked files: with
 status.showUntrackedFiles=no Copier's check passes, and git ls-files still lists
-them, so an untracked file of the user there is removed too.
+them, so an untracked file of the user there is removed too. On update it also
+removes every written file that Copier's render of the old version holds outside
+the parts the old answers excluded: the project had removed that file, and Copier
+writes it back under the paths of _skip_if_exists.
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # Each component owns these paths. `device-bridge` owns no path: it only changes
@@ -106,6 +110,76 @@ def written_files(root: Path) -> set[Path]:
         print(f"post_gen: {root} is not a git work tree; the update removes nothing")
         return set()
     return {root / name for name in listed.stdout.split("\0") if name}
+
+
+def old_render(root: Path) -> Path | None:
+    """Copier's render of the old version during an update, or None.
+
+    Copier renders the old version into a temporary directory named
+    copier._main.old_copy.<random> and lists the git objects directory of the
+    destination in the git alternates of that directory.
+    """
+    found = subprocess.run(
+        ["git", "rev-parse", "--show-prefix", "--git-path", "objects"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+    )
+    prefix, objects = found.stdout.splitlines()[:2]
+    objects_dir = (root / objects).resolve()
+    for copy in sorted(Path(tempfile.gettempdir()).glob("copier._main.old_copy.*")):
+        alternates = copy / ".git" / "objects" / "info" / "alternates"
+        if alternates.is_file() and objects_dir in {
+            Path(line).resolve() for line in alternates.read_text().splitlines()
+        }:
+            return copy / prefix
+    return None
+
+
+def remove_restored(root: Path, written: set[Path]) -> None:
+    """Remove the written files that the project had removed before the update.
+
+    Such a file is in Copier's render of the old version. post_gen removes nothing
+    in that render, which is not a git work tree, so it also holds the components
+    and host/ that the old answers excluded; the files under those stay.
+    """
+    old = old_render(root)
+    if old is None:
+        print(
+            "post_gen: Copier's render of the old version was not found;"
+            " removed starter files may be written back"
+        )
+        return
+    answers = old / ".copier-answers.yml"
+    lines = answers.read_text().splitlines() if answers.is_file() else []
+    components = []
+    if "components:" in lines:
+        for line in lines[lines.index("components:") + 1 :]:
+            if not line.startswith("- "):
+                break
+            components.append(line[2:])
+    excluded = [
+        old / relative
+        for name, paths in COMPONENT_PATHS.items()
+        if name not in components
+        for relative in paths
+    ]
+    if "host_side: 'Yes'" not in lines:
+        excluded.append(old / "host")
+    count = 0
+    for file in written:
+        before = old / file.relative_to(root)
+        if not os.path.lexists(file) or not os.path.lexists(before):
+            continue
+        if any(before == path or path in before.parents for path in excluded):
+            continue
+        file.unlink()
+        count += 1
+        for directory in file.parents:
+            if directory == root or any(directory.iterdir()):
+                break
+            directory.rmdir()
+    print(f"post_gen: removed {count} files the project had removed before the update")
 
 
 def create_symlink(link: Path, target: Path) -> None:
@@ -338,6 +412,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.open_source_license == "No license file":
         remove(root / "LICENSE", written)
+    if written:
+        remove_restored(root, written)
     if not update:
         remove_empty_component_roots(root, update)
         if args.platform == "arduino" and args.arduino_sketch_link == "Yes":

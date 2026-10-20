@@ -303,6 +303,81 @@ def test_update_outside_git_removes_nothing():
         assert not (directory / ".git").exists()
 
 
+def make_old_render(temp: Path, project: Path, answers: str) -> None:
+    """Copier's render of the old version: every template path and the old answers.
+
+    Its git alternates name the objects directory of the project, as Copier writes them.
+    """
+    old = temp / "copier._main.old_copy.test"
+    make_tree(old)
+    write(old, ".copier-answers.yml", answers)
+    write(old, ".git/objects/info/alternates", str(project / ".git" / "objects"))
+
+
+def test_update_removes_the_written_back_files_the_project_removed(monkeypatch):
+    """DEF-POST-9-UPDATE-STARTER: a starter file the project removed stays removed."""
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp) / REPO
+        directory.mkdir()
+        answers = {"components": "notebooks,simulator", "host_side": "Yes"}
+        make_tree(directory)
+        run_post_gen(directory, **answers)
+        commit_project(directory)
+        removed = (
+            "notebooks/README.md",
+            "test/harness/qemu.py",
+            "host/tests/test_protocol.py",
+            "scripts/README.md",
+        )
+        for relative in removed:
+            (directory / relative).unlink()
+        subprocess.run(
+            ["git", "-c", "user.name=test", "-c", "user.email=test@example.com",
+             "commit", "-am", "remove"],
+            cwd=directory, check=True, capture_output=True,
+        )
+        make_old_render(
+            Path(temp), directory, "components:\n- notebooks\n- simulator\nhost_side: 'Yes'\n"
+        )
+        monkeypatch.setenv("TMPDIR", temp)
+
+        # The update writes every old template path back and one file of the new version.
+        make_tree(directory)
+        write(directory, "test/harness/board.py")
+        output = run_post_gen(directory, operation="update", **answers)
+
+        for relative in (*removed, "notebooks", "host/tests"):
+            assert not (directory / relative).exists(), relative
+        assert (directory / "test/harness/board.py").is_file()
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=all"],
+            cwd=directory, capture_output=True, text=True,
+        )
+        assert status.stdout == "?? test/harness/board.py\n"
+        assert "removed 4 files the project had removed before the update" in output
+
+
+def test_update_keeps_the_parts_the_old_answers_did_not_select(monkeypatch):
+    """A component and host/ chosen on update stay, although the old render holds them."""
+    with tempfile.TemporaryDirectory() as temp:
+        directory = Path(temp) / REPO
+        directory.mkdir()
+        make_tree(directory)
+        run_post_gen(directory, components="notebooks")
+        commit_project(directory)
+        make_old_render(Path(temp), directory, "components:\n- notebooks\nhost_side: 'No'\n")
+        monkeypatch.setenv("TMPDIR", temp)
+
+        make_tree(directory)
+        output = run_post_gen(
+            directory, operation="update", components="notebooks,docs", host_side="Yes"
+        )
+
+        assert (directory / "docs/README.md").is_file()
+        assert (directory / "host/tests/test_protocol.py").is_file()
+        assert "removed 0 files the project had removed before the update" in output
+
+
 def test_skip_list_protects_every_user_owned_path():
     config = yaml.safe_load(CONFIG_PATH.read_text())
     skip = set(config["_skip_if_exists"])
