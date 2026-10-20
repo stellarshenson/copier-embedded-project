@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.19] - 2026-10-20
+
+### Changed
+
+- `.env.example` explains each setting (port names, baud uses, the stm32flash serial modes) and
+  points to the device skill and the device references for the values
+
+### Fixed
+
+- The STM32 Rust device skill states the console format as 8N1, as the firmware sets it
+
 ## [1.0.18] - 2026-10-20
 
 ### Removed

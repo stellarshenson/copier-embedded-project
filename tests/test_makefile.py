@@ -308,12 +308,14 @@ def test_acc_tmpl_66_env_port_stm32_serial_mode_from_env():
 def test_acc_tmpl_66_env_port_example_renders_the_defaults(answers, baud, serial_mode):
     """ACC-TMPL-66-ENV-PORT: .env.example carries the defaults as commented make lines."""
     with bake(answers, components=DEFAULT) as project:
-        lines = (project / ".env.example").read_text().splitlines()
-        assert all(line.startswith("# ") for line in lines), lines
+        text = (project / ".env.example").read_text()
+        lines = text.splitlines()
+        assert all(line.startswith("# ") for line in lines if line), lines
         assert "# PORT=/dev/ttyUSB0" in lines
         assert f"# BAUD={baud}" in lines
         assert "# PORT=/run/devices/tty-<vid>-<pid>" in lines
         assert ("# STM32_SERIAL_MODE=8e1" in lines) is serial_mode
+        assert ("8n1" in text and "AN3155" in text) is serial_mode
         default = upload_dry_run(project)
         values = [line[2:] for line in lines if re.match(r"# [A-Z_]+=", line) and "<" not in line]
         (project / ".env").write_text("\n".join(values) + "\n")

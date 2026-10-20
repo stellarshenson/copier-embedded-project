@@ -170,6 +170,11 @@ def test_readme_and_device_skill_route_every_command_through_make(answers):
                 assert target in text, target
             assert "pio run" not in text
             assert "cargo build" not in text
+        if answers.get("stm32_toolchain") == "rust":
+            console = [line for line in skill.splitlines() if "Console" in line]
+            assert any(
+                re.match(r"- Console: \d+ baud, 8N1\b", line) for line in console
+            ) and not any(re.search(r"Console[^;|]*8E1", line) for line in console), console
 
 
 @pytest.mark.parametrize(

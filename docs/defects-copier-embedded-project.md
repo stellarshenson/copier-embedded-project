@@ -86,3 +86,16 @@ The GitHub Actions workflow that the ci component renders into a generated proje
   - log: 2026-10-19T23:46:48Z @kj added; reason: the text, the repro and the root cause each need the CI step, the Makefile variable and the helper by name
   - log: 2026-10-20T00:16:48Z @kj closed; reason: the evidence names the reproduction under a stripped PATH and every gate result
 
+## Generated documentation `DOCS`
+
+The agent skills and documentation text that the template renders into a generated project
+
+- [x] `DEF-DOCS-10-CONSOLE-FORMAT` **STM32 Rust device skill states the console format as 8E1** - MINOR; the Board facts section of the device skill of every STM32 Rust project reads - Console: 115200 baud, 8E1 on a direct port, while the firmware sets the console USART to 8N1 (8 data bits, no parity, 1 stop bit); the Troubleshooting row of the same skill already says 8N1 and gives 8E1 to the ROM serial bootloader only
+  - evidence: tests/test_readme_sections.py::test_readme_and_device_skill_route_every_command_through_make: 8 passed on 2026-10-20 (includes stm32-rust-f405rg and stm32-rust-f103c8); make lint: All checks passed
+  - repro: copier copy --trust --defaults --vcs-ref HEAD <template> /tmp/skill-console-8n1/stm32 -d platform=stm32 -d stm32_toolchain=rust (and -d stm32_board=f103c8, f411re, l476rg); .agents/skills/stm32-device/SKILL.md line 18 reads - Console: 115200 baud, 8E1 on a direct port, and console_init in src/bin/stm32.rs writes USART_CR1 with UE and TE only
+  - test-tags: UNIT
+  - root-cause: 2026-10-20T12:57:16Z @kj the STM32 Rust branch of Board facts in template/.agents/skills/{{ repo_name }}-device/SKILL.md (line 94) gives the console the 8E1 format of the ROM serial bootloader (AN3155), which make upload selects through STM32_SERIAL_MODE ?= 8e1 in template/Makefile. console_init in template/src/bin/{{ repo_name }}.rs (lines 152-156) writes USART_CR1 = (1 << 13) | (1 << 3) = 0x2008 on f405rg, f411re and f103c8 (UE bit 13, TE bit 3; M bit 12 and PCE bit 10 clear) and (1 << 0) | (1 << 3) = 0x9 on l476rg (UE bit 0, TE bit 3; M0 bit 12, M1 bit 28 and PCE bit 10 clear), and writes no USART_CR2, whose STOP field resets to 1 stop bit, so the console runs 8N1
+  - log: 2026-10-20T12:57:16Z @kj added; reason: the text, the repro and the root cause each need the CR1 values per board and the file paths
+  - log: 2026-10-20T12:59:45Z @kj fix in working tree, uncommitted: template/.agents/skills/{{ repo_name }}-device/SKILL.md line 94 now reads - Console: {{ serial_baud }} baud, 8N1; the ROM serial bootloader uses 8E1, which the upload sets; test tests/test_readme_sections.py::test_readme_and_device_skill_route_every_command_through_make asserts on STM32 Rust that the Console line names 8N1 and no line pairs Console with 8E1: 2 failed on the old line (stm32-rust-f405rg, stm32-rust-f103c8), 40 passed after the fix; reason: the event names the changed file, the new line, the test node and both results
+  - log: 2026-10-20T13:00:44Z @kj closed
+

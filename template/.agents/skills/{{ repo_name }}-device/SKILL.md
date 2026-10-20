@@ -91,7 +91,7 @@ targets below are the whole development lifecycle.
 - MCU: {{ part[0] }}, {{ part[1] }}, {{ flash_kb }} KB flash, {{ ram_kb }} KB RAM
 - Upload: stm32flash over the ROM serial bootloader
 - A port that refuses parity, such as a device bridge pty, needs `STM32_SERIAL_MODE=8n1` in `.env`
-- Console: {{ serial_baud }} baud, 8E1 on a direct port
+- Console: {{ serial_baud }} baud, 8N1; the ROM serial bootloader uses 8E1, which the upload sets
 {%- else -%}
 - Platform: STM32, framework {{ stm32_framework }} on PlatformIO
 - Board: `{{ pio_board }}` ({{ stm32_board }})
