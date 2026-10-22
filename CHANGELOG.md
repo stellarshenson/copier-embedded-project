@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.20] - 2026-10-22
+
+### Added
+
+- Board references: one self-contained HTML page per board under `references/boards/`, the
+  `board-reference` skill that defines the page contract, and a pointer from the template skill
+
 ## [1.0.19] - 2026-10-20
 
 ### Changed
