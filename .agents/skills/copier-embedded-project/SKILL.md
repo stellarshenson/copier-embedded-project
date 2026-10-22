@@ -56,6 +56,10 @@ carries the same files for a rendered project.
 - Keep `envs/` and `template/resources/envs/` identical: lab-utils runs the first, a rendered
   project runs the second
 
+## Board references
+
+`references/boards/` holds one self-contained HTML page per board, with one index row per board. Use the `board-reference` skill.
+
 ## Limits
 
 - ESP and STM32 builds download platforms; they are not part of the fast tests
